@@ -342,6 +342,8 @@ const formOcorrencia = ref({
 
 // Estado das ocorrências
 const ocorrencias = ref([])
+const ocorrenciasFiltradas = ref([])
+const termoPesquisa = ref('')
 
 // Atualizar lista de ocorrências quando pessoa mudar
 watch(() => props.pessoa, (novaPessoa) => {
