@@ -316,14 +316,16 @@ const carregarAlunos = async () => {
 
 // Função para testar URLs conhecidas
 const testarUrlsConhecidas = () => {
-  if (props.curso === 'SEDUC_TEC_ELETROMECANICA' && props.turma === 'TEEA2') {
+  const turmaNormalizada = String(props.turma || '').replace(/\s+/g, '').trim()
+
+  if (props.curso === 'SEDUC_TEC_ELETROMECANICA' && turmaNormalizada === 'TEEA2') {
     const urlsConhecidas = [
       '/fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Alice Vitória Moreira Silva.png',
       '/fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Anderson Franco De Jesus.png',
       '/fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Caio Gabriel Santana Da Silva.png'
     ]
 
-    console.log(`🧪 TESTANDO URLs CONHECIDAS:`)
+    console.log(`🧪 TESTANDO URLs CONHECIDAS (turma: "${props.turma}" → "${turmaNormalizada}"):`)
     urlsConhecidas.forEach((url, i) => {
       console.log(`  ${i+1}. Testando: ${url}`)
 
