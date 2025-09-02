@@ -628,7 +628,8 @@ const getFoto = (pessoa) => {
   if (!pessoa?.nome || !props.curso || !props.turma) return ''
 
   const cursoId = props.curso
-  const turma = props.turma
+  // NORMALIZAR TURMA - mesma lógica do buildCandidatos
+  const turma = String(props.turma || '').replace(/\s+/g, '').trim()
   const nome = pessoa.nome.trim()
 
   // Usar estruturas específicas por curso
