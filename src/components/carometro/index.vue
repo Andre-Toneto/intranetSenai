@@ -285,6 +285,11 @@ const carregarAlunos = async () => {
       alunosCarregados = getAlunosPorCursoTurma(props.curso, props.turma)
 
       if (alunosCarregados.length > 0) {
+        console.log(`👥 ALUNOS CARREGADOS DA PLANILHA:`)
+        alunosCarregados.forEach((aluno, i) => {
+          console.log(`  ${i+1}. "${aluno.nome}" (matrícula: ${aluno.matricula})`)
+        })
+
         pessoas.value = alunosCarregados
         emit('updateTotal', pessoas.value)
         // Carregar fotos em lotes para melhor performance
