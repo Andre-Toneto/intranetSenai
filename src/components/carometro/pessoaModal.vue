@@ -138,25 +138,69 @@
                       </v-chip>
                     </div>
 
+                    <!-- Botão para adicionar ocorrência -->
+                    <div class="d-flex justify-end mb-3">
+                      <v-btn
+                        color="error"
+                        variant="outlined"
+                        size="small"
+                        prepend-icon="mdi-plus"
+                        @click="abrirModalOcorrencia()"
+                        :loading="saving"
+                      >
+                        Nova Ocorrência
+                      </v-btn>
+                    </div>
+
                     <!-- Lista com scroll fixo -->
                     <v-sheet height="200" rounded="lg" border class="pa-2 overflow-y-auto">
-                      <template v-if="pessoa.ocorrencias && pessoa.ocorrencias.length">
+                      <template v-if="ocorrencias && ocorrencias.length">
                         <v-card
-                          v-for="(ocorrencia, index) in pessoa.ocorrencias"
-                          :key="index"
+                          v-for="ocorrencia in ocorrencias"
+                          :key="ocorrencia.id"
                           class="mb-2"
                           variant="outlined"
                           rounded="lg"
                         >
                           <v-card-text class="pa-3">
-                            <div class="d-flex">
-                              <v-icon color="error" size="12" class="mt-1 mr-2">mdi-circle</v-icon>
-                              <div>
-                                <p class="text-body-2">{{ ocorrencia }}</p>
-                                <p class="text-caption d-flex align-center">
-                                  <v-icon size="12" class="mr-1">mdi-calendar</v-icon>
-                                  {{ new Date().toLocaleDateString('pt-BR') }}
-                                </p>
+                            <div class="d-flex justify-space-between">
+                              <div class="d-flex flex-grow-1">
+                                <v-icon color="error" size="12" class="mt-1 mr-2">mdi-circle</v-icon>
+                                <div class="flex-grow-1">
+                                  <div class="d-flex align-center mb-1">
+                                    <v-chip size="x-small" color="warning" variant="outlined" class="mr-2">
+                                      {{ ocorrencia.tipo || 'Outro' }}
+                                    </v-chip>
+                                  </div>
+                                  <p class="text-body-2 mb-1">{{ ocorrencia.descricao || ocorrencia }}</p>
+                                  <div class="d-flex align-center justify-space-between">
+                                    <p class="text-caption d-flex align-center">
+                                      <v-icon size="12" class="mr-1">mdi-calendar</v-icon>
+                                      {{ new Date(ocorrencia.data || Date.now()).toLocaleDateString('pt-BR') }}
+                                    </p>
+                                    <p class="text-caption d-flex align-center">
+                                      <v-icon size="12" class="mr-1">mdi-account</v-icon>
+                                      {{ ocorrencia.autor || 'N/A' }}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="d-flex flex-column ml-2">
+                                <v-btn
+                                  icon="mdi-pencil"
+                                  size="x-small"
+                                  variant="text"
+                                  color="primary"
+                                  @click="abrirModalOcorrencia(ocorrencia)"
+                                  class="mb-1"
+                                />
+                                <v-btn
+                                  icon="mdi-delete"
+                                  size="x-small"
+                                  variant="text"
+                                  color="error"
+                                  @click="excluirOcorrencia(ocorrencia)"
+                                />
                               </div>
                             </div>
                           </v-card-text>
@@ -188,17 +232,216 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
+
+  <!-- Modal para Adicionar/Editar Ocorrência -->
+  <v-dialog v-model="modalOcorrencia" max-width="600" persistent>
+    <v-card rounded="xl">
+      <v-card-title class="pa-6 pb-4">
+        <div class="d-flex align-center">
+          <v-icon color="error" class="mr-3">mdi-alert-circle</v-icon>
+          <h3>{{ editandoOcorrencia ? 'Editar Ocorrência' : 'Nova Ocorrência' }}</h3>
+        </div>
+      </v-card-title>
+
+      <v-card-text class="pa-6 pt-0">
+        <v-form>
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="formOcorrencia.tipo"
+                :items="tiposOcorrencia"
+                label="Tipo de Ocorrência"
+                variant="outlined"
+                density="compact"
+                required
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="formOcorrencia.data"
+                label="Data"
+                type="date"
+                variant="outlined"
+                density="compact"
+                required
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-text-field
+                v-model="formOcorrencia.autor"
+                label="Professor/Responsável"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="mdi-account-tie"
+                placeholder="Nome do professor que está registrando"
+                required
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-textarea
+                v-model="formOcorrencia.descricao"
+                label="Descrição da Ocorrência"
+                variant="outlined"
+                density="compact"
+                rows="4"
+                placeholder="Descreva detalhadamente a ocorrência..."
+                counter
+                required
+              />
+            </v-col>
+          </v-row>
+        </v-form>
+      </v-card-text>
+
+      <v-card-actions class="pa-6 pt-0">
+        <v-btn
+          variant="outlined"
+          @click="modalOcorrencia = false"
+          :disabled="saving"
+        >
+          Cancelar
+        </v-btn>
+        <v-spacer />
+        <v-btn
+          color="error"
+          @click="salvarOcorrencia"
+          :loading="saving"
+        >
+          {{ editandoOcorrencia ? 'Atualizar' : 'Registrar' }}
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useOcorrencias } from '@/composables/useOcorrencias.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
-  pessoa: { type: Object, default: () => ({}) }
+  pessoa: { type: Object, default: () => ({}) },
+  curso: { type: Object, default: () => ({}) },
+  turma: { type: Object, default: () => ({}) }
 })
 
 const emit = defineEmits(['update:modelValue'])
+
+// Composable para ocorrências
+const { saving, list, add, update, remove } = useOcorrencias()
+
+// Estado do modal de ocorrência
+const modalOcorrencia = ref(false)
+const editandoOcorrencia = ref(null)
+const formOcorrencia = ref({
+  tipo: 'Disciplinar',
+  descricao: '',
+  data: new Date().toISOString().split('T')[0],
+  autor: ''
+})
+
+// Estado das ocorrências
+const ocorrencias = ref([])
+
+// Atualizar lista de ocorrências quando pessoa mudar
+watch(() => props.pessoa, (novaPessoa) => {
+  if (novaPessoa?.id || novaPessoa?.matricula) {
+    carregarOcorrencias()
+  }
+}, { immediate: true })
+
+// Funções para gerenciar ocorrências
+const carregarOcorrencias = () => {
+  if (!props.pessoa?.id && !props.pessoa?.matricula) return
+
+  const alunoId = props.pessoa.id || props.pessoa.matricula
+  const cursoId = props.curso?.id
+  const turmaId = props.turma?.id || props.turma?.nome
+
+  ocorrencias.value = list(cursoId, turmaId, alunoId)
+}
+
+const abrirModalOcorrencia = (ocorrencia = null) => {
+  if (ocorrencia) {
+    // Editando ocorrência existente
+    editandoOcorrencia.value = ocorrencia
+    formOcorrencia.value = {
+      tipo: ocorrencia.tipo || 'Disciplinar',
+      descricao: ocorrencia.descricao || '',
+      data: ocorrencia.data ? new Date(ocorrencia.data).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      autor: ocorrencia.autor || ''
+    }
+  } else {
+    // Nova ocorrência
+    editandoOcorrencia.value = null
+    formOcorrencia.value = {
+      tipo: 'Disciplinar',
+      descricao: '',
+      data: new Date().toISOString().split('T')[0],
+      autor: ''
+    }
+  }
+  modalOcorrencia.value = true
+}
+
+const salvarOcorrencia = async () => {
+  if (!formOcorrencia.value.descricao.trim() || !formOcorrencia.value.autor.trim()) {
+    alert('Descrição e professor são obrigatórios!')
+    return
+  }
+
+  try {
+    const alunoId = props.pessoa.id || props.pessoa.matricula
+    const cursoId = props.curso?.id
+    const turmaId = props.turma?.id || props.turma?.nome
+
+    if (editandoOcorrencia.value) {
+      // Atualizar ocorrência existente
+      await update(cursoId, turmaId, alunoId, editandoOcorrencia.value.id, {
+        ...formOcorrencia.value,
+        data: new Date(formOcorrencia.value.data).toISOString()
+      })
+    } else {
+      // Adicionar nova ocorrência
+      await add(cursoId, turmaId, alunoId, {
+        ...formOcorrencia.value,
+        data: new Date(formOcorrencia.value.data).toISOString()
+      })
+    }
+
+    carregarOcorrencias()
+    modalOcorrencia.value = false
+  } catch (error) {
+    console.error('Erro ao salvar ocorrência:', error)
+    alert('Erro ao salvar ocorrência: ' + error.message)
+  }
+}
+
+const excluirOcorrencia = async (ocorrencia) => {
+  if (!confirm('Tem certeza que deseja excluir esta ocorrência?')) return
+
+  try {
+    const alunoId = props.pessoa.id || props.pessoa.matricula
+    const cursoId = props.curso?.id
+    const turmaId = props.turma?.id || props.turma?.nome
+
+    await remove(cursoId, turmaId, alunoId, ocorrencia.id)
+    carregarOcorrencias()
+  } catch (error) {
+    console.error('Erro ao excluir ocorrência:', error)
+    alert('Erro ao excluir ocorrência: ' + error.message)
+  }
+}
+
+// Tipos de ocorrência disponíveis
+const tiposOcorrencia = [
+  'Disciplinar',
+  'Comportamental',
+  'Acadêmico',
+  'Falta',
+  'Atraso',
+  'Outro'
+]
 
 const isOpen = computed({
   get: () => props.modelValue,
