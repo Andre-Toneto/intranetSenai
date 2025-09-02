@@ -138,8 +138,18 @@
                       </v-chip>
                     </div>
 
-                    <!-- Botão para adicionar ocorrência -->
-                    <div class="d-flex justify-end mb-3">
+                    <!-- Barra de pesquisa e botão para adicionar ocorrência -->
+                    <div class="d-flex align-center gap-3 mb-3">
+                      <v-text-field
+                        v-model="termoPesquisa"
+                        placeholder="Pesquisar por tipo, data, descrição..."
+                        variant="outlined"
+                        density="compact"
+                        prepend-inner-icon="mdi-magnify"
+                        clearable
+                        hide-details
+                        class="flex-grow-1"
+                      />
                       <v-btn
                         color="error"
                         variant="outlined"
