@@ -540,33 +540,46 @@ const resolverFoto = (pessoa) => {
   const key = getPessoaKey(pessoa)
   if (!key || fotoSrcs.value[key]) return
 
+  console.log(`🔍 RESOLVENDO FOTO`)
+  console.log(`👤 Nome do aluno: "${pessoa.nome}"`)
+  console.log(`📚 Curso: "${props.curso}"`)
+  console.log(`🎓 Turma: "${props.turma}"`)
+
   fotoSrcs.value[key] = 'loading'
   const candidatos = buildCandidatos(pessoa)
 
+  console.log(`📂 Total candidatos: ${candidatos.length}`)
+  console.log(`🎯 Primeiros 3 candidatos:`)
+  candidatos.slice(0, 3).forEach((c, i) => console.log(`  ${i+1}. ${c}`))
+
   const tryNext = (i) => {
     if (i >= candidatos.length) {
-      console.log(`❌ Foto não encontrada: "${pessoa.nome}"`)
+      console.log(`❌ FOTO NÃO ENCONTRADA: "${pessoa.nome}" após ${candidatos.length} tentativas`)
+      console.log(`📋 URLs testadas:`, candidatos)
       fotoSrcs.value[key] = ''
       return
     }
 
     const url = candidatos[i]
+    console.log(`🔍 Testando ${i + 1}/${candidatos.length}: ${url}`)
+
     const img = new Image()
 
-    // Timeout reduzido para 1 segundo
     const timeout = setTimeout(() => {
+      console.log(`⏰ Timeout: ${url}`)
       img.onload = null
       img.onerror = null
       tryNext(i + 1)
-    }, 1000)
+    }, 2000)
 
     img.onload = () => {
-      console.log(`✅ Foto encontrada: "${pessoa.nome}" → ${url}`)
+      console.log(`✅ SUCESSO! Foto encontrada: "${pessoa.nome}" → ${url}`)
       clearTimeout(timeout)
       fotoSrcs.value[key] = url
     }
 
     img.onerror = () => {
+      console.log(`❌ Erro 404: ${url}`)
       clearTimeout(timeout)
       tryNext(i + 1)
     }
