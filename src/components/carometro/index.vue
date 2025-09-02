@@ -445,23 +445,15 @@ const toNFC = (s) => {
 
 // Mapear nomes de cursos para nomes reais das pastas
 const mapearCursoParaPasta = (cursoNome) => {
-  console.log(`🗂️ Mapeando curso: "${cursoNome}"`)
-
   const mapeamento = {
-    // IDs dos cursos
     'CAI': 'CAI',
     'SESI_TEC_ADM': 'TÉCNICO ADMINISTRAÇÃO',
     'SEDUC_TEC_ELETROMECANICA': 'TÉCNICO ELETROMECÂNICA',
-
-    // Nomes dos cursos também
-    'CAI': 'CAI',
     'SESI TÉC ADM': 'TÉCNICO ADMINISTRAÇÃO',
     'SEDUC TÉC ELETROMECÂNICA': 'TÉCNICO ELETROMECÂNICA'
   }
 
-  const resultado = mapeamento[cursoNome] || cursoNome
-  console.log(`📁 Curso "${cursoNome}" → Pasta "${resultado}"`)
-  return resultado
+  return mapeamento[cursoNome] || cursoNome
 }
 
 // Gera variações possíveis para pastas de curso/turma
