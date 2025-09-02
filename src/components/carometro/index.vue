@@ -347,7 +347,7 @@ const carregarFotosEmLotes = (alunos) => {
     const inicio = currentBatch * batchSize
     const fim = Math.min(inicio + batchSize, alunos.length)
 
-    console.log(`���� Processando lote ${currentBatch + 1}: alunos ${inicio + 1} a ${fim}`)
+    console.log(`📦 Processando lote ${currentBatch + 1}: alunos ${inicio + 1} a ${fim}`)
 
     for (let i = inicio; i < fim; i++) {
       resolverFoto(alunos[i])
@@ -528,7 +528,8 @@ const buildCandidatos = (pessoa) => {
 
   // Estruturas específicas por curso
   const cursoId = props.curso
-  const turma = props.turma
+  // NORMALIZAR TURMA - remover espaços extras que causam problema
+  const turma = String(props.turma || '').replace(/\s+/g, '').trim() // TEEA 2 → TEEA2
 
   if (cursoId === 'CAI') {
     // CAI: fotos/CAI/TURMA/NOME.ext
