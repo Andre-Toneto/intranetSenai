@@ -78,9 +78,17 @@ export const useExcelData = () => {
         dados.forEach(registro => {
           // Identificar curso baseado no nome da planilha ou campo específico
           let cursoId = identificarCurso(nomePlanilha, registro)
-          
+
+          console.log(`Processando planilha "${nomePlanilha}":`, {
+            registro: registro,
+            cursoIdentificado: cursoId
+          })
+
           if (!cursoId) {
-            console.warn('Curso não identificado para registro:', registro)
+            console.warn('Curso não identificado para registro:', {
+              planilha: nomePlanilha,
+              registro: registro
+            })
             return
           }
 
