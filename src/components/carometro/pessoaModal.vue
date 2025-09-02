@@ -164,9 +164,9 @@
 
                     <!-- Lista com scroll fixo -->
                     <v-sheet height="200" rounded="lg" border class="pa-2 overflow-y-auto">
-                      <template v-if="ocorrencias && ocorrencias.length">
+                      <template v-if="ocorrenciasFiltradas && ocorrenciasFiltradas.length">
                         <v-card
-                          v-for="ocorrencia in ocorrencias"
+                          v-for="ocorrencia in ocorrenciasFiltradas"
                           :key="ocorrencia.id"
                           class="mb-2"
                           variant="outlined"
