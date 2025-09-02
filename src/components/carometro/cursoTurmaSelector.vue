@@ -28,6 +28,15 @@
               <div class="text-center py-4">
                 <v-icon size="48" color="grey-lighten-2" class="mb-2">mdi-folder-open</v-icon>
                 <p class="text-body-2 text-medium-emphasis">Nenhum curso encontrado na planilha</p>
+                <v-btn
+                  size="small"
+                  color="warning"
+                  variant="outlined"
+                  @click="mostrarDebugInfo"
+                  class="mt-2"
+                >
+                  Ver Debug Info
+                </v-btn>
               </div>
             </template>
 
