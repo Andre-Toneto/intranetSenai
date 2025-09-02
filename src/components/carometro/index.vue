@@ -569,9 +569,14 @@ const resolverFoto = (pessoa) => {
 // Retorna uma URL padrão (primeira convenção) caso ainda não resolvido
 const getFoto = (pessoa) => {
   if (pessoa?.foto) return pessoa.foto
-  const nome = nomeComSep(pessoa?.nome || '', '_')
-  if (!nome || !props.curso || !props.turma) return ''
-  return `/fotos/${enc(props.curso)}/${enc(props.turma)}/${enc(nome)}.jpg`
+  if (!pessoa?.nome || !props.curso || !props.turma) return ''
+
+  // Usar mapeamento otimizado para primeira tentativa
+  const cursoMapeado = mapearCursoParaPasta(props.curso)
+  const nome = pessoa.nome.trim()
+
+  // Tentar primeiro o formato mais comum: nome original com .png
+  return `/fotos/${enc(cursoMapeado)}/${enc(props.turma)}/${enc(nome)}.png`
 }
 </script>
 
