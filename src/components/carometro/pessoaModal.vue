@@ -361,7 +361,43 @@ const carregarOcorrencias = () => {
   const turmaId = props.turma?.id || props.turma?.nome
 
   ocorrencias.value = list(cursoId, turmaId, alunoId)
+  filtrarOcorrencias()
 }
+
+// Função para filtrar ocorrências
+const filtrarOcorrencias = () => {
+  if (!termoPesquisa.value.trim()) {
+    ocorrenciasFiltradas.value = [...ocorrencias.value]
+    return
+  }
+
+  const termo = termoPesquisa.value.toLowerCase().trim()
+
+  ocorrenciasFiltradas.value = ocorrencias.value.filter(ocorrencia => {
+    // Filtrar por tipo
+    const tipoMatch = (ocorrencia.tipo || '').toLowerCase().includes(termo)
+
+    // Filtrar por data (formato brasileiro e ISO)
+    const dataOcorrencia = new Date(ocorrencia.data || Date.now())
+    const dataFormatada = dataOcorrencia.toLocaleDateString('pt-BR')
+    const dataISO = dataOcorrencia.toISOString().split('T')[0]
+    const dataMatch = dataFormatada.includes(termo) || dataISO.includes(termo)
+
+    // Filtrar por descrição também
+    const descricaoMatch = (ocorrencia.descricao || '').toLowerCase().includes(termo)
+
+    // Filtrar por autor
+    const autorMatch = (ocorrencia.autor || '').toLowerCase().includes(termo)
+
+    return tipoMatch || dataMatch || descricaoMatch || autorMatch
+  })
+}
+
+// Watch para filtrar quando o termo de pesquisa mudar
+watch(termoPesquisa, filtrarOcorrencias)
+
+// Watch para recarregar quando as ocorrências mudarem
+watch(ocorrencias, filtrarOcorrencias, { deep: true })
 
 const abrirModalOcorrencia = (ocorrencia = null) => {
   if (ocorrencia) {
