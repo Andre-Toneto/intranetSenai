@@ -285,6 +285,8 @@ const carregarAlunos = async () => {
       alunosCarregados = getAlunosPorCursoTurma(props.curso, props.turma)
 
       if (alunosCarregados.length > 0) {
+        console.log(`👥 ${alunosCarregados.length} alunos carregados da planilha`)
+
         pessoas.value = alunosCarregados
         emit('updateTotal', pessoas.value)
         // Carregar fotos em lotes para melhor performance
@@ -309,14 +311,42 @@ const carregarAlunos = async () => {
   }
 }
 
+// Função para testar URLs conhecidas
+const testarUrlsConhecidas = () => {
+  const turmaNormalizada = String(props.turma || '').replace(/\s+/g, '').trim()
+
+  if (props.curso === 'SEDUC_TEC_ELETROMECANICA' && turmaNormalizada === 'TEEA2') {
+    const urlsConhecidas = [
+      '/fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Alice Vitória Moreira Silva.png',
+      '/fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Anderson Franco De Jesus.png',
+      '/fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Caio Gabriel Santana Da Silva.png'
+    ]
+
+    console.log(`🧪 TESTANDO URLs CONHECIDAS (turma: "${props.turma}" → "${turmaNormalizada}"):`)
+    urlsConhecidas.forEach((url, i) => {
+      console.log(`  ${i+1}. Testando: ${url}`)
+
+      const img = new Image()
+      img.onload = () => console.log(`  ✅ SUCESSO: ${url}`)
+      img.onerror = () => console.log(`  ❌ FALHOU: ${url}`)
+      img.src = url
+    })
+  }
+}
+
 // Função para carregar fotos em lotes (5 por vez com delay)
 const carregarFotosEmLotes = (alunos) => {
-  const batchSize = 5
+  // Testar URLs conhecidas primeiro
+  testarUrlsConhecidas()
+
+  const batchSize = 3 // Reduzido para debug
   let currentBatch = 0
 
   const processarLote = () => {
     const inicio = currentBatch * batchSize
     const fim = Math.min(inicio + batchSize, alunos.length)
+
+    console.log(`📦 Processando lote ${currentBatch + 1}: alunos ${inicio + 1} a ${fim}`)
 
     for (let i = inicio; i < fim; i++) {
       resolverFoto(alunos[i])
@@ -325,8 +355,8 @@ const carregarFotosEmLotes = (alunos) => {
     currentBatch++
 
     if (fim < alunos.length) {
-      // Aguardar 100ms antes do próximo lote
-      setTimeout(processarLote, 100)
+      // Aguardar 500ms antes do próximo lote para debug
+      setTimeout(processarLote, 500)
     }
   }
 
@@ -447,6 +477,8 @@ const toNFC = (s) => {
 const mapearCursoParaPasta = (cursoNome) => {
   const mapeamento = {
     'CAI': 'CAI',
+    'SESI_TEC_ADM': 'TÉCNICO ADMINISTRAÇÃO',
+    'SEDUC_TEC_ELETROMECANICA': 'TÉCNICO ELETROMECÂNICA',
     'SESI TÉC ADM': 'TÉCNICO ADMINISTRAÇÃO',
     'SEDUC TÉC ELETROMECÂNICA': 'TÉCNICO ELETROMECÂNICA'
   }
@@ -456,66 +488,69 @@ const mapearCursoParaPasta = (cursoNome) => {
 
 // Gera variações possíveis para pastas de curso/turma
 const folderVariants = (str, isCurso = false) => {
-  // Se for curso, usar o mapeamento
   const strMapeado = isCurso ? mapearCursoParaPasta(str) : str
-
   const raw = String(strMapeado || '').trim().replace(/\s+/g, ' ')
   const rawNFC = toNFC(raw)
-  return [
-    raw,
-    rawNFC,
-    raw.toUpperCase(),
-    raw.toLowerCase(),
-    rawNFC.toUpperCase(),
-    rawNFC.toLowerCase(),
-    nomeComSep(strMapeado, '_'),
-    nomeComSep(strMapeado, '-'),
-    baseNome(strMapeado),
-    // Adicionar variações específicas para cursos
-    ...(isCurso ? [
-      str, // Nome original também
-      nomeComSep(str, '_'),
-      nomeComSep(str, '-'),
-      baseNome(str)
-    ] : [])
+
+  const variants = [
+    raw, rawNFC, str,
+    raw.toUpperCase(), raw.toLowerCase(),
+    rawNFC.toUpperCase(), rawNFC.toLowerCase(),
+    nomeComSep(strMapeado, '_'), nomeComSep(strMapeado, '-'),
+    nomeComSep(str, '_'), nomeComSep(str, '-'),
+    baseNome(strMapeado), baseNome(str),
   ]
+
+  return [...new Set(variants.filter(v => v && v.trim()))]
 }
 
 // Encoda segmento de URL com segurança
 const enc = (s) => encodeURIComponent(String(s || ''))
 
-// Candidatos de arquivo para tentar - OTIMIZADO para performance
+// Candidatos de arquivo para tentar - OTIMIZADO com estruturas específicas
 const buildCandidatos = (pessoa) => {
   const nome = pessoa?.nome || ''
   const raw = String(nome).trim().replace(/\s+/g, ' ')
-  const rawNFC = toNFC(raw)
 
-  // Apenas as variações mais prováveis (reduzido de 18 para 6)
+  // Variações do nome (reduzidas)
   const nomes = [
     raw, // Nome original
-    rawNFC, // Nome normalizado
-    toTitleCaseRaw(rawNFC), // Title Case com acentos
     raw.replace(/\s+/g, '_'), // Com underscores
-    rawNFC.replace(/\s+/g, '_'), // Normalizado com underscores
-    toTitleCaseRaw(rawNFC).replace(/\s+/g, '_') // Title Case com underscores
+    raw.replace(/\s+/g, ' ').split(' ').map(p =>
+      p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
+    ).join(' '), // Title Case
+    raw.toUpperCase() // Maiúsculo
   ]
 
-  // Apenas extensões mais comuns (reduzido de 8 para 4)
-  const exts = ['.png', '.jpg', '.jpeg', '.PNG']
-
-  // Apenas as pastas mais prováveis (máximo 3 variações cada)
-  const cursoDirs = folderVariants(props.curso, true).slice(0, 3)
-  const turmaDirs = folderVariants(props.turma, false).slice(0, 3)
-
+  const exts = ['.png', '.jpg', '.PNG', '.jpeg']
   const candidatos = []
 
-  // Priorizar combinações mais prováveis primeiro
-  for (const ext of exts) {
-    for (const c of cursoDirs) {
-      for (const t of turmaDirs) {
-        for (const n of nomes) {
-          candidatos.push(`/fotos/${enc(c)}/${enc(t)}/${enc(n)}${ext}`)
-        }
+  // Estruturas específicas por curso
+  const cursoId = props.curso
+  // NORMALIZAR TURMA - remover espaços extras que causam problema
+  const turma = String(props.turma || '').replace(/\s+/g, '').trim() // TEEA 2 → TEEA2
+
+  if (cursoId === 'CAI') {
+    // CAI: fotos/CAI/TURMA/NOME.ext
+    for (const ext of exts) {
+      for (const n of nomes) {
+        candidatos.push(`/fotos/CAI/${enc(turma)}/${enc(n)}${ext}`)
+      }
+    }
+  }
+  else if (cursoId === 'SESI_TEC_ADM' || cursoId === 'SESI TÉC ADM') {
+    // ADMINISTRAÇÃO: fotos/TÉCNICO ADMINISTRAÇÃO/TURMA/NOME.ext
+    for (const ext of exts) {
+      for (const n of nomes) {
+        candidatos.push(`/fotos/TÉCNICO ADMINISTRAÇÃO/${enc(turma)}/${enc(n)}${ext}`)
+      }
+    }
+  }
+  else if (cursoId === 'SEDUC_TEC_ELETROMECANICA' || cursoId === 'SEDUC TÉC ELETROMECÂNICA') {
+    // ELETROMECÂNICA: fotos/TÉCNICO ELETROMECÂNICA/TURMA/NOME.ext
+    for (const ext of exts) {
+      for (const n of nomes) {
+        candidatos.push(`/fotos/TÉCNICO ELETROMECÂNICA/${enc(turma)}/${enc(n)}${ext}`)
       }
     }
   }
@@ -531,26 +566,29 @@ const resolverFoto = (pessoa) => {
   const key = getPessoaKey(pessoa)
   if (!key || fotoSrcs.value[key]) return
 
-  fotoSrcs.value[key] = 'loading' // Marca como carregando
+  console.log(`🔍 Buscando foto: "${pessoa.nome}" | Turma: "${props.turma}" → "${String(props.turma || '').replace(/\s+/g, '').trim()}"`)
+
+  fotoSrcs.value[key] = 'loading'
   const candidatos = buildCandidatos(pessoa)
 
   const tryNext = (i) => {
     if (i >= candidatos.length) {
-      fotoSrcs.value[key] = '' // Não encontrou
+      console.log(`❌ Foto não encontrada: "${pessoa.nome}"`)
+      fotoSrcs.value[key] = ''
       return
     }
 
     const url = candidatos[i]
     const img = new Image()
 
-    // Timeout de 2 segundos por imagem
     const timeout = setTimeout(() => {
       img.onload = null
       img.onerror = null
       tryNext(i + 1)
-    }, 2000)
+    }, 1000)
 
     img.onload = () => {
+      console.log(`✅ Foto encontrada: "${pessoa.nome}" → ${url}`)
       clearTimeout(timeout)
       fotoSrcs.value[key] = url
     }
@@ -571,12 +609,21 @@ const getFoto = (pessoa) => {
   if (pessoa?.foto) return pessoa.foto
   if (!pessoa?.nome || !props.curso || !props.turma) return ''
 
-  // Usar mapeamento otimizado para primeira tentativa
-  const cursoMapeado = mapearCursoParaPasta(props.curso)
+  const cursoId = props.curso
+  // NORMALIZAR TURMA - mesma lógica do buildCandidatos
+  const turma = String(props.turma || '').replace(/\s+/g, '').trim()
   const nome = pessoa.nome.trim()
 
-  // Tentar primeiro o formato mais comum: nome original com .png
-  return `/fotos/${enc(cursoMapeado)}/${enc(props.turma)}/${enc(nome)}.png`
+  // Usar estruturas específicas por curso
+  if (cursoId === 'CAI') {
+    return `/fotos/CAI/${enc(turma)}/${enc(nome)}.png`
+  } else if (cursoId === 'SESI_TEC_ADM' || cursoId === 'SESI TÉC ADM') {
+    return `/fotos/TÉCNICO ADMINISTRAÇÃO/${enc(turma)}/${enc(nome)}.png`
+  } else if (cursoId === 'SEDUC_TEC_ELETROMECANICA' || cursoId === 'SEDUC TÉC ELETROMECÂNICA') {
+    return `/fotos/TÉCNICO ELETROMECÂNICA/${enc(turma)}/${enc(nome)}.png`
+  }
+
+  return ''
 }
 </script>
 
