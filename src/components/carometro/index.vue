@@ -507,50 +507,56 @@ const folderVariants = (str, isCurso = false) => {
 // Encoda segmento de URL com segurança
 const enc = (s) => encodeURIComponent(String(s || ''))
 
-// Candidatos de arquivo para tentar - OTIMIZADO para performance
+// Candidatos de arquivo para tentar - OTIMIZADO com estruturas específicas
 const buildCandidatos = (pessoa) => {
   const nome = pessoa?.nome || ''
   const raw = String(nome).trim().replace(/\s+/g, ' ')
-  const rawNFC = toNFC(raw)
 
-  console.log(`🔍 Gerando candidatos para: "${nome}"`)
-  console.log(`📚 Curso: "${props.curso}" | 🎓 Turma: "${props.turma}"`)
-
-  // Apenas as variações mais prováveis (reduzido de 18 para 6)
+  // Variações do nome (reduzidas)
   const nomes = [
     raw, // Nome original
-    rawNFC, // Nome normalizado
-    toTitleCaseRaw(rawNFC), // Title Case com acentos
     raw.replace(/\s+/g, '_'), // Com underscores
-    rawNFC.replace(/\s+/g, '_'), // Normalizado com underscores
-    toTitleCaseRaw(rawNFC).replace(/\s+/g, '_') // Title Case com underscores
+    raw.replace(/\s+/g, ' ').split(' ').map(p =>
+      p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
+    ).join(' '), // Title Case
+    raw.toUpperCase() // Maiúsculo
   ]
 
-  // Apenas extensões mais comuns (reduzido de 8 para 4)
-  const exts = ['.png', '.jpg', '.jpeg', '.PNG']
-
-  // Gerar todas as variações de pastas (não limitar para debug)
-  const cursoDirs = folderVariants(props.curso, true)
-  const turmaDirs = folderVariants(props.turma, false)
-
-  console.log(`📁 Diretórios curso:`, cursoDirs)
-  console.log(`📂 Diretórios turma:`, turmaDirs)
-
+  const exts = ['.png', '.jpg', '.PNG', '.jpeg']
   const candidatos = []
 
-  // Priorizar combinações mais prováveis primeiro
-  for (const ext of exts) {
-    for (const c of cursoDirs) {
-      for (const t of turmaDirs) {
-        for (const n of nomes) {
-          candidatos.push(`/fotos/${enc(c)}/${enc(t)}/${enc(n)}${ext}`)
-        }
+  // Estruturas específicas por curso
+  const cursoId = props.curso
+  const turma = props.turma
+
+  if (cursoId === 'CAI') {
+    // CAI: fotos/CAI/TURMA/NOME.ext
+    for (const ext of exts) {
+      for (const n of nomes) {
+        candidatos.push(`/fotos/CAI/${enc(turma)}/${enc(n)}${ext}`)
+      }
+    }
+  }
+  else if (cursoId === 'SESI_TEC_ADM' || cursoId === 'SESI TÉC ADM') {
+    // ADMINISTRAÇÃO: fotos/TÉCNICO ADMINISTRAÇÃO/TURMA/NOME.ext
+    for (const ext of exts) {
+      for (const n of nomes) {
+        candidatos.push(`/fotos/TÉCNICO ADMINISTRAÇÃO/${enc(turma)}/${enc(n)}${ext}`)
+      }
+    }
+  }
+  else if (cursoId === 'SEDUC_TEC_ELETROMECANICA' || cursoId === 'SEDUC TÉC ELETROMECÂNICA') {
+    // ELETROMECÂNICA: fotos/TURMA/TÉCNICO ELETROMECÂNIA/NOME.ext (estrutura invertida!)
+    for (const ext of exts) {
+      for (const n of nomes) {
+        candidatos.push(`/fotos/${enc(turma)}/TÉCNICO ELETROMECÂNIA/${enc(n)}${ext}`)
+        // Também tentar com grafia correta
+        candidatos.push(`/fotos/${enc(turma)}/TÉCNICO ELETROMECÂNICA/${enc(n)}${ext}`)
       }
     }
   }
 
-  console.log(`🎯 Primeiros 10 candidatos:`, candidatos.slice(0, 10))
-  console.log(`📊 Total de candidatos: ${candidatos.length}`)
+  console.log(`🔍 Gerando ${candidatos.length} candidatos para "${nome}" (curso: ${cursoId})`)
 
   return candidatos
 }
