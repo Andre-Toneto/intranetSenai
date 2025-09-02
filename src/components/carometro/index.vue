@@ -314,14 +314,40 @@ const carregarAlunos = async () => {
   }
 }
 
+// Função para testar URLs conhecidas
+const testarUrlsConhecidas = () => {
+  if (props.curso === 'SEDUC_TEC_ELETROMECANICA' && props.turma === 'TEEA2') {
+    const urlsConhecidas = [
+      '/fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Alice Vitória Moreira Silva.png',
+      '/fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Anderson Franco De Jesus.png',
+      '/fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Caio Gabriel Santana Da Silva.png'
+    ]
+
+    console.log(`🧪 TESTANDO URLs CONHECIDAS:`)
+    urlsConhecidas.forEach((url, i) => {
+      console.log(`  ${i+1}. Testando: ${url}`)
+
+      const img = new Image()
+      img.onload = () => console.log(`  ✅ SUCESSO: ${url}`)
+      img.onerror = () => console.log(`  ❌ FALHOU: ${url}`)
+      img.src = url
+    })
+  }
+}
+
 // Função para carregar fotos em lotes (5 por vez com delay)
 const carregarFotosEmLotes = (alunos) => {
-  const batchSize = 5
+  // Testar URLs conhecidas primeiro
+  testarUrlsConhecidas()
+
+  const batchSize = 3 // Reduzido para debug
   let currentBatch = 0
 
   const processarLote = () => {
     const inicio = currentBatch * batchSize
     const fim = Math.min(inicio + batchSize, alunos.length)
+
+    console.log(`���� Processando lote ${currentBatch + 1}: alunos ${inicio + 1} a ${fim}`)
 
     for (let i = inicio; i < fim; i++) {
       resolverFoto(alunos[i])
@@ -330,8 +356,8 @@ const carregarFotosEmLotes = (alunos) => {
     currentBatch++
 
     if (fim < alunos.length) {
-      // Aguardar 100ms antes do próximo lote
-      setTimeout(processarLote, 100)
+      // Aguardar 500ms antes do próximo lote para debug
+      setTimeout(processarLote, 500)
     }
   }
 
