@@ -558,11 +558,6 @@ const buildCandidatos = (pessoa) => {
     }
   }
 
-  console.log(`🔍 Gerando ${candidatos.length} candidatos para "${nome}" (curso: ${cursoId})`)
-  if (candidatos.length > 0) {
-    console.log(`📝 Primeiro candidato: ${candidatos[0]}`)
-  }
-
   return candidatos
 }
 
