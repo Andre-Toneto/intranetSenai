@@ -484,15 +484,39 @@ const resolverFoto = (pessoa) => {
   if (!pessoa || !props.curso || !props.turma) return
   const key = getPessoaKey(pessoa)
   if (!key || fotoSrcs.value[key]) return
+
+  fotoSrcs.value[key] = 'loading' // Marca como carregando
   const candidatos = buildCandidatos(pessoa)
+
   const tryNext = (i) => {
-    if (i >= candidatos.length) { fotoSrcs.value[key] = ''; return }
+    if (i >= candidatos.length) {
+      fotoSrcs.value[key] = '' // Não encontrou
+      return
+    }
+
     const url = candidatos[i]
     const img = new Image()
-    img.onload = () => { fotoSrcs.value[key] = url }
-    img.onerror = () => tryNext(i + 1)
+
+    // Timeout de 2 segundos por imagem
+    const timeout = setTimeout(() => {
+      img.onload = null
+      img.onerror = null
+      tryNext(i + 1)
+    }, 2000)
+
+    img.onload = () => {
+      clearTimeout(timeout)
+      fotoSrcs.value[key] = url
+    }
+
+    img.onerror = () => {
+      clearTimeout(timeout)
+      tryNext(i + 1)
+    }
+
     img.src = url
   }
+
   tryNext(0)
 }
 
