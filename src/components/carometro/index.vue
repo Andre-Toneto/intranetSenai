@@ -574,7 +574,7 @@ const resolverFoto = (pessoa) => {
   tryNext(0)
 }
 
-// Retorna uma URL padrão (primeira convenção) caso ainda não resolvido
+// Retorna uma URL padr��o (primeira convenção) caso ainda não resolvido
 const getFoto = (pessoa) => {
   if (pessoa?.foto) return pessoa.foto
   if (!pessoa?.nome || !props.curso || !props.turma) return ''
@@ -589,7 +589,7 @@ const getFoto = (pessoa) => {
   } else if (cursoId === 'SESI_TEC_ADM' || cursoId === 'SESI TÉC ADM') {
     return `/fotos/TÉCNICO ADMINISTRAÇÃO/${enc(turma)}/${enc(nome)}.png`
   } else if (cursoId === 'SEDUC_TEC_ELETROMECANICA' || cursoId === 'SEDUC TÉC ELETROMECÂNICA') {
-    return `/fotos/${enc(turma)}/TÉCNICO ELETROMECÂNIA/${enc(nome)}.png`
+    return `/fotos/TÉCNICO ELETROMECÂNICA/${enc(turma)}/${enc(nome)}.png`
   }
 
   return ''
