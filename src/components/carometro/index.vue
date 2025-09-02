@@ -525,6 +525,9 @@ const buildCandidatos = (pessoa) => {
   }
 
   console.log(`🔍 Gerando ${candidatos.length} candidatos para "${nome}" (curso: ${cursoId})`)
+  if (candidatos.length > 0) {
+    console.log(`📝 Primeiro candidato: ${candidatos[0]}`)
+  }
 
   return candidatos
 }
@@ -574,7 +577,7 @@ const resolverFoto = (pessoa) => {
   tryNext(0)
 }
 
-// Retorna uma URL padr��o (primeira convenção) caso ainda não resolvido
+// Retorna uma URL padrão (primeira convenção) caso ainda não resolvido
 const getFoto = (pessoa) => {
   if (pessoa?.foto) return pessoa.foto
   if (!pessoa?.nome || !props.curso || !props.turma) return ''
