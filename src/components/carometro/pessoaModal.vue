@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="isOpen" max-width="1000" persistent>
+  <v-dialog v-model="isOpen" max-width="1100" persistent>
     <v-card elevation="24" rounded="xl" :style="{ background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)' }">
       <!-- Header com gradiente -->
       <v-sheet
@@ -153,17 +153,19 @@
                         prepend-inner-icon="mdi-magnify"
                         clearable
                         hide-details
-                        class="flex-grow-1"
+                        class="flex-grow-1 "
                       />
                       <v-btn
                         color="error"
                         variant="outlined"
-                        size="small"
                         prepend-icon="mdi-plus"
                         @click="abrirModalOcorrencia()"
                         :loading="saving"
+                        class="ml-3"
                       >
-                        Nova Ocorrência
+                      <span>
+                        Nova <br />Ocorrência
+                      </span>
                       </v-btn>
                     </div>
 
