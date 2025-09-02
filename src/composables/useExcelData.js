@@ -349,7 +349,7 @@ export const useExcelData = () => {
   //   return normalizarUrlPlanilha(url)
   // }
   const getUrlConfigurada = () => {
-    return "https://docs.google.com/spreadsheets/d/1brCSzg2UepSJO-DoFH4xdpHlpz2SeaNm/export?format=xlsx"
+    return "https://docs.google.com/spreadsheets/d/1BKSSU6khpPjJ7x8vsbRkwc7TJcAWk3yO/export?format=xlsx"
   }
 
   // Sincroniza automaticamente a planilha configurada
