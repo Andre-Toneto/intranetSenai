@@ -183,11 +183,19 @@
           <!-- Avatar/Foto -->
           <div class="text-center pt-6 pb-2">
             <v-avatar size="80" class="elevation-4">
-              <v-img :src="fotoSrcs[getPessoaKey(pessoa)] || getFoto(pessoa)" cover>
-                <template #error>
-                  <v-icon size="40" color="grey-lighten-1">mdi-account</v-icon>
-                </template>
-              </v-img>
+              <template v-if="fotoSrcs[getPessoaKey(pessoa)] === 'loading'">
+                <v-progress-circular indeterminate size="40" color="primary" />
+              </template>
+              <template v-else>
+                <v-img :src="fotoSrcs[getPessoaKey(pessoa)] || getFoto(pessoa)" cover>
+                  <template #placeholder>
+                    <v-skeleton-loader type="avatar" />
+                  </template>
+                  <template #error>
+                    <v-icon size="40" color="grey-lighten-1">mdi-account</v-icon>
+                  </template>
+                </v-img>
+              </template>
             </v-avatar>
           </div>
 
@@ -279,7 +287,8 @@ const carregarAlunos = async () => {
       if (alunosCarregados.length > 0) {
         pessoas.value = alunosCarregados
         emit('updateTotal', pessoas.value)
-        pessoas.value.forEach(resolverFoto)
+        // Carregar fotos em lotes para melhor performance
+        carregarFotosEmLotes(pessoas.value)
         return
       }
     }
@@ -289,8 +298,8 @@ const carregarAlunos = async () => {
 
     pessoas.value = alunosCarregados
     emit('updateTotal', pessoas.value)
-    // Resolver fotos para lista
-    pessoas.value.forEach(resolverFoto)
+    // Carregar fotos em lotes para melhor performance
+    carregarFotosEmLotes(pessoas.value)
   } catch (error) {
     console.error('Erro ao carregar alunos:', error)
     pessoas.value = []
@@ -298,6 +307,30 @@ const carregarAlunos = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// Função para carregar fotos em lotes (5 por vez com delay)
+const carregarFotosEmLotes = (alunos) => {
+  const batchSize = 5
+  let currentBatch = 0
+
+  const processarLote = () => {
+    const inicio = currentBatch * batchSize
+    const fim = Math.min(inicio + batchSize, alunos.length)
+
+    for (let i = inicio; i < fim; i++) {
+      resolverFoto(alunos[i])
+    }
+
+    currentBatch++
+
+    if (fim < alunos.length) {
+      // Aguardar 100ms antes do próximo lote
+      setTimeout(processarLote, 100)
+    }
+  }
+
+  processarLote()
 }
 
 const abrirModal = (pessoa) => {
@@ -336,6 +369,19 @@ watch(() => [props.turma, props.curso], ([newTurma, newCurso]) => {
     carregarAlunos()
   }
 })
+
+// Watch para pré-carregar fotos dos alunos filtrados
+watch(pessoasFiltradas, (novaLista) => {
+  if (novaLista.length > 0) {
+    // Pré-carregar fotos dos primeiros 10 alunos visíveis
+    novaLista.slice(0, 10).forEach(pessoa => {
+      const key = getPessoaKey(pessoa)
+      if (!fotoSrcs.value[key] || fotoSrcs.value[key] === '') {
+        resolverFoto(pessoa)
+      }
+    })
+  }
+}, { immediate: true })
 
 // Funções auxiliares para badge
 const getCorBadge = () => {
@@ -397,9 +443,23 @@ const toNFC = (s) => {
   try { return String(s || '').normalize('NFC') } catch { return String(s || '') }
 }
 
+// Mapear nomes de cursos para nomes reais das pastas
+const mapearCursoParaPasta = (cursoNome) => {
+  const mapeamento = {
+    'CAI': 'CAI',
+    'SESI TÉC ADM': 'TÉCNICO ADMINISTRAÇÃO',
+    'SEDUC TÉC ELETROMECÂNICA': 'TÉCNICO ELETROMECÂNICA'
+  }
+
+  return mapeamento[cursoNome] || cursoNome
+}
+
 // Gera variações possíveis para pastas de curso/turma
-const folderVariants = (str) => {
-  const raw = String(str || '').trim().replace(/\s+/g, ' ')
+const folderVariants = (str, isCurso = false) => {
+  // Se for curso, usar o mapeamento
+  const strMapeado = isCurso ? mapearCursoParaPasta(str) : str
+
+  const raw = String(strMapeado || '').trim().replace(/\s+/g, ' ')
   const rawNFC = toNFC(raw)
   return [
     raw,
@@ -408,66 +468,58 @@ const folderVariants = (str) => {
     raw.toLowerCase(),
     rawNFC.toUpperCase(),
     rawNFC.toLowerCase(),
-    nomeComSep(str, '_'),
-    nomeComSep(str, '-'),
-    baseNome(str)
+    nomeComSep(strMapeado, '_'),
+    nomeComSep(strMapeado, '-'),
+    baseNome(strMapeado),
+    // Adicionar variações específicas para cursos
+    ...(isCurso ? [
+      str, // Nome original também
+      nomeComSep(str, '_'),
+      nomeComSep(str, '-'),
+      baseNome(str)
+    ] : [])
   ]
 }
 
 // Encoda segmento de URL com segurança
 const enc = (s) => encodeURIComponent(String(s || ''))
 
-// Candidatos de arquivo para tentar (inclui variações de nome e pastas) e encoding de URL
+// Candidatos de arquivo para tentar - OTIMIZADO para performance
 const buildCandidatos = (pessoa) => {
   const nome = pessoa?.nome || ''
   const raw = String(nome).trim().replace(/\s+/g, ' ')
   const rawNFC = toNFC(raw)
 
-  const nomes = Array.from(new Set([
-    // Normalizados (lower, sem acento)
-    nomeComSep(nome, '_'),
-    nomeComSep(nome, '-'),
-    baseNome(nome),
-    baseNome(nome).replace(/\s+/g, ''),
+  // Apenas as variações mais prováveis (reduzido de 18 para 6)
+  const nomes = [
+    raw, // Nome original
+    rawNFC, // Nome normalizado
+    toTitleCaseRaw(rawNFC), // Title Case com acentos
+    raw.replace(/\s+/g, '_'), // Com underscores
+    rawNFC.replace(/\s+/g, '_'), // Normalizado com underscores
+    toTitleCaseRaw(rawNFC).replace(/\s+/g, '_') // Title Case com underscores
+  ]
 
-    // Title Case a partir do normalizado (sem acento)
-    toTitleCase(nome),
-    toTitleCase(nome).replace(/\s+/g, '_'),
-    toTitleCase(nome).replace(/\s+/g, '-'),
-    toTitleCase(nome).replace(/\s+/g, ''),
+  // Apenas extensões mais comuns (reduzido de 8 para 4)
+  const exts = ['.png', '.jpg', '.jpeg', '.PNG']
 
-    // Title Case preservando acentos do original
-    toTitleCaseRaw(rawNFC),
-    toTitleCaseRaw(rawNFC).replace(/\s+/g, '_'),
-    toTitleCaseRaw(rawNFC).replace(/\s+/g, '-'),
-    toTitleCaseRaw(rawNFC).replace(/\s+/g, ''),
-
-    // Originais (como vieram, preservando acentos)
-    raw,
-    rawNFC,
-    raw.replace(/\s+/g, '_'),
-    raw.replace(/\s+/g, '-'),
-    raw.replace(/\s+/g, ''),
-    rawNFC.replace(/\s+/g, '_'),
-    rawNFC.replace(/\s+/g, '-'),
-    rawNFC.replace(/\s+/g, ''),
-  ]))
-
-  const exts = ['.jpg', '.jpeg', '.png', '.webp', '.JPG', '.JPEG', '.PNG', '.WEBP']
-
-  const cursoDirs = folderVariants(props.curso)
-  const turmaDirs = folderVariants(props.turma)
+  // Apenas as pastas mais prováveis (máximo 3 variações cada)
+  const cursoDirs = folderVariants(props.curso, true).slice(0, 3)
+  const turmaDirs = folderVariants(props.turma, false).slice(0, 3)
 
   const candidatos = []
-  for (const c of cursoDirs) {
-    for (const t of turmaDirs) {
-      for (const n of nomes) {
-        for (const ext of exts) {
+
+  // Priorizar combinações mais prováveis primeiro
+  for (const ext of exts) {
+    for (const c of cursoDirs) {
+      for (const t of turmaDirs) {
+        for (const n of nomes) {
           candidatos.push(`/fotos/${enc(c)}/${enc(t)}/${enc(n)}${ext}`)
         }
       }
     }
   }
+
   return candidatos
 }
 
@@ -478,24 +530,53 @@ const resolverFoto = (pessoa) => {
   if (!pessoa || !props.curso || !props.turma) return
   const key = getPessoaKey(pessoa)
   if (!key || fotoSrcs.value[key]) return
+
+  fotoSrcs.value[key] = 'loading' // Marca como carregando
   const candidatos = buildCandidatos(pessoa)
+
   const tryNext = (i) => {
-    if (i >= candidatos.length) { fotoSrcs.value[key] = ''; return }
+    if (i >= candidatos.length) {
+      fotoSrcs.value[key] = '' // Não encontrou
+      return
+    }
+
     const url = candidatos[i]
     const img = new Image()
-    img.onload = () => { fotoSrcs.value[key] = url }
-    img.onerror = () => tryNext(i + 1)
+
+    // Timeout de 2 segundos por imagem
+    const timeout = setTimeout(() => {
+      img.onload = null
+      img.onerror = null
+      tryNext(i + 1)
+    }, 2000)
+
+    img.onload = () => {
+      clearTimeout(timeout)
+      fotoSrcs.value[key] = url
+    }
+
+    img.onerror = () => {
+      clearTimeout(timeout)
+      tryNext(i + 1)
+    }
+
     img.src = url
   }
+
   tryNext(0)
 }
 
 // Retorna uma URL padrão (primeira convenção) caso ainda não resolvido
 const getFoto = (pessoa) => {
   if (pessoa?.foto) return pessoa.foto
-  const nome = nomeComSep(pessoa?.nome || '', '_')
-  if (!nome || !props.curso || !props.turma) return ''
-  return `/fotos/${enc(props.curso)}/${enc(props.turma)}/${enc(nome)}.jpg`
+  if (!pessoa?.nome || !props.curso || !props.turma) return ''
+
+  // Usar mapeamento otimizado para primeira tentativa
+  const cursoMapeado = mapearCursoParaPasta(props.curso)
+  const nome = pessoa.nome.trim()
+
+  // Tentar primeiro o formato mais comum: nome original com .png
+  return `/fotos/${enc(cursoMapeado)}/${enc(props.turma)}/${enc(nome)}.png`
 }
 </script>
 
