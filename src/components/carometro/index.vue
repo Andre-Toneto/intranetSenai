@@ -397,9 +397,23 @@ const toNFC = (s) => {
   try { return String(s || '').normalize('NFC') } catch { return String(s || '') }
 }
 
+// Mapear nomes de cursos para nomes reais das pastas
+const mapearCursoParaPasta = (cursoNome) => {
+  const mapeamento = {
+    'CAI': 'CAI',
+    'SESI TÉC ADM': 'TÉCNICO ADMINISTRAÇÃO',
+    'SEDUC TÉC ELETROMECÂNICA': 'TÉCNICO ELETROMECÂNICA'
+  }
+
+  return mapeamento[cursoNome] || cursoNome
+}
+
 // Gera variações possíveis para pastas de curso/turma
-const folderVariants = (str) => {
-  const raw = String(str || '').trim().replace(/\s+/g, ' ')
+const folderVariants = (str, isCurso = false) => {
+  // Se for curso, usar o mapeamento
+  const strMapeado = isCurso ? mapearCursoParaPasta(str) : str
+
+  const raw = String(strMapeado || '').trim().replace(/\s+/g, ' ')
   const rawNFC = toNFC(raw)
   return [
     raw,
@@ -408,9 +422,16 @@ const folderVariants = (str) => {
     raw.toLowerCase(),
     rawNFC.toUpperCase(),
     rawNFC.toLowerCase(),
-    nomeComSep(str, '_'),
-    nomeComSep(str, '-'),
-    baseNome(str)
+    nomeComSep(strMapeado, '_'),
+    nomeComSep(strMapeado, '-'),
+    baseNome(strMapeado),
+    // Adicionar variações específicas para cursos
+    ...(isCurso ? [
+      str, // Nome original também
+      nomeComSep(str, '_'),
+      nomeComSep(str, '-'),
+      baseNome(str)
+    ] : [])
   ]
 }
 
@@ -455,8 +476,8 @@ const buildCandidatos = (pessoa) => {
 
   const exts = ['.jpg', '.jpeg', '.png', '.webp', '.JPG', '.JPEG', '.PNG', '.WEBP']
 
-  const cursoDirs = folderVariants(props.curso)
-  const turmaDirs = folderVariants(props.turma)
+  const cursoDirs = folderVariants(props.curso, true)
+  const turmaDirs = folderVariants(props.turma, false)
 
   const candidatos = []
   for (const c of cursoDirs) {
