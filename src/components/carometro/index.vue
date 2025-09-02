@@ -370,6 +370,19 @@ watch(() => [props.turma, props.curso], ([newTurma, newCurso]) => {
   }
 })
 
+// Watch para pré-carregar fotos dos alunos filtrados
+watch(pessoasFiltradas, (novaLista) => {
+  if (novaLista.length > 0) {
+    // Pré-carregar fotos dos primeiros 10 alunos visíveis
+    novaLista.slice(0, 10).forEach(pessoa => {
+      const key = getPessoaKey(pessoa)
+      if (!fotoSrcs.value[key] || fotoSrcs.value[key] === '') {
+        resolverFoto(pessoa)
+      }
+    })
+  }
+}, { immediate: true })
+
 // Funções auxiliares para badge
 const getCorBadge = () => {
   if (temDadosExcel.value && props.curso) return 'success'
