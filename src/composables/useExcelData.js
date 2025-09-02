@@ -211,7 +211,7 @@ export const useExcelData = () => {
     return ''
   }
 
-  // Função para gerar ID ��nico do aluno
+  // Função para gerar ID único do aluno
   const gerarIdAluno = (registro) => {
     const matricula = extrairCampo(registro, ['matricula', 'Matricula', 'MATRICULA'])
     const nome = extrairCampo(registro, ['nome', 'Nome', 'NOME'])
@@ -423,6 +423,7 @@ export const useExcelData = () => {
     temDadosPlanilha,
     normalizarUrlPlanilha,
     getUrlConfigurada,
-    sincronizarPlanilhaConfigurada
+    sincronizarPlanilhaConfigurada,
+    limparCache
   }
 }
