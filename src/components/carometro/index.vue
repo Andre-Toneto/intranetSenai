@@ -183,11 +183,19 @@
           <!-- Avatar/Foto -->
           <div class="text-center pt-6 pb-2">
             <v-avatar size="80" class="elevation-4">
-              <v-img :src="fotoSrcs[getPessoaKey(pessoa)] || getFoto(pessoa)" cover>
-                <template #error>
-                  <v-icon size="40" color="grey-lighten-1">mdi-account</v-icon>
-                </template>
-              </v-img>
+              <template v-if="fotoSrcs[getPessoaKey(pessoa)] === 'loading'">
+                <v-progress-circular indeterminate size="40" color="primary" />
+              </template>
+              <template v-else>
+                <v-img :src="fotoSrcs[getPessoaKey(pessoa)] || getFoto(pessoa)" cover>
+                  <template #placeholder>
+                    <v-skeleton-loader type="avatar" />
+                  </template>
+                  <template #error>
+                    <v-icon size="40" color="grey-lighten-1">mdi-account</v-icon>
+                  </template>
+                </v-img>
+              </template>
             </v-avatar>
           </div>
 
