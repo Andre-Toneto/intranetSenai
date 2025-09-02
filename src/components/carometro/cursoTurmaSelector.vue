@@ -303,6 +303,51 @@ const abrirConfigExcel = () => {
   emit('configurar-excel')
 }
 
+// Funções de debug
+const forcarSincronizacao = async () => {
+  carregandoSync.value = true
+  try {
+    console.log('Forçando sincronização...')
+    const sucesso = await sincronizarPlanilhaConfigurada(true)
+    if (sucesso) {
+      console.log('Sincronização forçada com sucesso')
+      carregarCursos()
+      alert('Dados recarregados com sucesso!')
+    } else {
+      console.warn('Falha na sincronização forçada')
+      alert('Falha ao recarregar dados. Verifique o console.')
+    }
+  } catch (error) {
+    console.error('Erro na sincronização forçada:', error)
+    alert('Erro ao recarregar: ' + error.message)
+  } finally {
+    carregandoSync.value = false
+  }
+}
+
+const limparTodoCache = () => {
+  if (confirm('Tem certeza que deseja limpar todo o cache? Isso removerá todos os dados salvos.')) {
+    limparCache()
+    carregarCursos()
+    alert('Cache limpo! Dados removidos.')
+  }
+}
+
+const mostrarDebugInfo = () => {
+  const dados = {
+    temDadosExcel: temDadosExcel.value,
+    totalCursos: cursosDisponiveis.value.length,
+    cursos: cursosDisponiveis.value.map(c => ({ id: c.id, nome: c.nome, alunos: c.totalAlunos })),
+    localStorage: {
+      carometro_dados_excel: !!localStorage.getItem('carometro_dados_excel'),
+      carometro_excel_timestamp: localStorage.getItem('carometro_excel_timestamp')
+    }
+  }
+
+  console.log('DEBUG INFO:', dados)
+  alert('Debug info no console. Total de cursos: ' + dados.totalCursos)
+}
+
 onMounted(() => {
   carregarCursos()
 })
