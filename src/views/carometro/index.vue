@@ -114,6 +114,8 @@
     <CarometroPessoaModal
       v-model="modalAberto"
       :pessoa="pessoaSelecionada"
+      :curso="cursoSelecionado"
+      :turma="turmaSelecionada"
     />
 
     <!-- Modal de Configuração Excel -->
