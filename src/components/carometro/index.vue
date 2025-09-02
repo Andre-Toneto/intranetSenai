@@ -575,7 +575,8 @@ const resolverFoto = (pessoa) => {
   console.log(`🔍 RESOLVENDO FOTO`)
   console.log(`👤 Nome do aluno: "${pessoa.nome}"`)
   console.log(`📚 Curso: "${props.curso}"`)
-  console.log(`🎓 Turma: "${props.turma}"`)
+  console.log(`🎓 Turma original: "${props.turma}"`)
+  console.log(`🎓 Turma normalizada: "${String(props.turma || '').replace(/\s+/g, '').trim()}"`)
 
   fotoSrcs.value[key] = 'loading'
   const candidatos = buildCandidatos(pessoa)
