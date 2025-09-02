@@ -199,8 +199,7 @@ const voltarSelecao = () => {
   cursoSelecionado.value = {}
   turmaSelecionada.value = {}
   totalAlunos.value = 0
-  turmaCode.value = ''
-  
+
   sessionStorage.removeItem('carometro_selecao')
 }
 
