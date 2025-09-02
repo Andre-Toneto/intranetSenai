@@ -513,6 +513,9 @@ const buildCandidatos = (pessoa) => {
   const raw = String(nome).trim().replace(/\s+/g, ' ')
   const rawNFC = toNFC(raw)
 
+  console.log(`🔍 Gerando candidatos para: "${nome}"`)
+  console.log(`📚 Curso: "${props.curso}" | 🎓 Turma: "${props.turma}"`)
+
   // Apenas as variações mais prováveis (reduzido de 18 para 6)
   const nomes = [
     raw, // Nome original
@@ -526,9 +529,12 @@ const buildCandidatos = (pessoa) => {
   // Apenas extensões mais comuns (reduzido de 8 para 4)
   const exts = ['.png', '.jpg', '.jpeg', '.PNG']
 
-  // Apenas as pastas mais prováveis (máximo 3 variações cada)
-  const cursoDirs = folderVariants(props.curso, true).slice(0, 3)
-  const turmaDirs = folderVariants(props.turma, false).slice(0, 3)
+  // Gerar todas as variações de pastas (não limitar para debug)
+  const cursoDirs = folderVariants(props.curso, true)
+  const turmaDirs = folderVariants(props.turma, false)
+
+  console.log(`📁 Diretórios curso:`, cursoDirs)
+  console.log(`📂 Diretórios turma:`, turmaDirs)
 
   const candidatos = []
 
@@ -542,6 +548,9 @@ const buildCandidatos = (pessoa) => {
       }
     }
   }
+
+  console.log(`🎯 Primeiros 10 candidatos:`, candidatos.slice(0, 10))
+  console.log(`📊 Total de candidatos: ${candidatos.length}`)
 
   return candidatos
 }
