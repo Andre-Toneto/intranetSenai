@@ -458,42 +458,20 @@ const mapearCursoParaPasta = (cursoNome) => {
 
 // Gera variações possíveis para pastas de curso/turma
 const folderVariants = (str, isCurso = false) => {
-  console.log(`📂 Gerando variações para: "${str}" (curso: ${isCurso})`)
-
-  // Se for curso, usar o mapeamento
   const strMapeado = isCurso ? mapearCursoParaPasta(str) : str
-
   const raw = String(strMapeado || '').trim().replace(/\s+/g, ' ')
   const rawNFC = toNFC(raw)
 
   const variants = [
-    // Originais
-    raw,
-    rawNFC,
-    str, // String original sem mapeamento
-
-    // Variações de case
-    raw.toUpperCase(),
-    raw.toLowerCase(),
-    rawNFC.toUpperCase(),
-    rawNFC.toLowerCase(),
-
-    // Com separadores
-    nomeComSep(strMapeado, '_'),
-    nomeComSep(strMapeado, '-'),
-    nomeComSep(str, '_'),
-    nomeComSep(str, '-'),
-
-    // Normalizados
-    baseNome(strMapeado),
-    baseNome(str),
+    raw, rawNFC, str,
+    raw.toUpperCase(), raw.toLowerCase(),
+    rawNFC.toUpperCase(), rawNFC.toLowerCase(),
+    nomeComSep(strMapeado, '_'), nomeComSep(strMapeado, '-'),
+    nomeComSep(str, '_'), nomeComSep(str, '-'),
+    baseNome(strMapeado), baseNome(str),
   ]
 
-  // Remover duplicatas preservando ordem
-  const uniqueVariants = [...new Set(variants.filter(v => v && v.trim()))]
-
-  console.log(`📋 Variações geradas:`, uniqueVariants)
-  return uniqueVariants
+  return [...new Set(variants.filter(v => v && v.trim()))]
 }
 
 // Encoda segmento de URL com segurança
