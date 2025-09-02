@@ -133,8 +133,13 @@
                         <v-icon color="error" class="mr-2">mdi-history</v-icon>
                         <h3 class="text-subtitle-1 font-weight-medium">Histórico de Ocorrências</h3>
                       </div>
-                      <v-chip v-if="pessoa.ocorrencias?.length" size="small" color="error" variant="outlined">
-                        {{ pessoa.ocorrencias.length }} registros
+                      <v-chip v-if="ocorrencias?.length" size="small" color="error" variant="outlined">
+                        <template v-if="termoPesquisa.trim() && ocorrenciasFiltradas.length !== ocorrencias.length">
+                          {{ ocorrenciasFiltradas.length }} de {{ ocorrencias.length }}
+                        </template>
+                        <template v-else>
+                          {{ ocorrencias.length }} registro{{ ocorrencias.length !== 1 ? 's' : '' }}
+                        </template>
                       </v-chip>
                     </div>
 
