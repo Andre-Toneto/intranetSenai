@@ -581,14 +581,20 @@ const getFoto = (pessoa) => {
   if (pessoa?.foto) return pessoa.foto
   if (!pessoa?.nome || !props.curso || !props.turma) return ''
 
-  // Usar mapeamento otimizado para primeira tentativa
-  const cursoMapeado = mapearCursoParaPasta(props.curso)
+  const cursoId = props.curso
+  const turma = props.turma
   const nome = pessoa.nome.trim()
 
-  const urlPadrao = `/fotos/${enc(cursoMapeado)}/${enc(props.turma)}/${enc(nome)}.png`
-  console.log(`🖼️ URL padrão para "${pessoa.nome}": ${urlPadrao}`)
+  // Usar estruturas específicas por curso
+  if (cursoId === 'CAI') {
+    return `/fotos/CAI/${enc(turma)}/${enc(nome)}.png`
+  } else if (cursoId === 'SESI_TEC_ADM' || cursoId === 'SESI TÉC ADM') {
+    return `/fotos/TÉCNICO ADMINISTRAÇÃO/${enc(turma)}/${enc(nome)}.png`
+  } else if (cursoId === 'SEDUC_TEC_ELETROMECANICA' || cursoId === 'SEDUC TÉC ELETROMECÂNICA') {
+    return `/fotos/${enc(turma)}/TÉCNICO ELETROMECÂNIA/${enc(nome)}.png`
+  }
 
-  return urlPadrao
+  return ''
 }
 </script>
 
