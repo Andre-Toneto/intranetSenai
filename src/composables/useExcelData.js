@@ -211,7 +211,7 @@ export const useExcelData = () => {
     return ''
   }
 
-  // Função para gerar ID único do aluno
+  // Função para gerar ID ��nico do aluno
   const gerarIdAluno = (registro) => {
     const matricula = extrairCampo(registro, ['matricula', 'Matricula', 'MATRICULA'])
     const nome = extrairCampo(registro, ['nome', 'Nome', 'NOME'])
@@ -367,17 +367,42 @@ export const useExcelData = () => {
     return "https://docs.google.com/spreadsheets/d/1BKSSU6khpPjJ7x8vsbRkwc7TJcAWk3yO/export?format=xlsx"
   }
 
+  // Função para limpar cache
+  const limparCache = () => {
+    try {
+      localStorage.removeItem('carometro_dados_excel')
+      localStorage.removeItem('carometro_excel_timestamp')
+      console.log('Cache limpo com sucesso')
+      return true
+    } catch (error) {
+      console.error('Erro ao limpar cache:', error)
+      return false
+    }
+  }
+
   // Sincroniza automaticamente a planilha configurada
   const sincronizarPlanilhaConfigurada = async (force = false) => {
     try {
       const url = getUrlConfigurada()
       if (!url) return false
+
+      // Se force=true, limpar cache primeiro
+      if (force) {
+        limparCache()
+      }
+
       if (!force && temDadosPlanilha()) return true
 
+      console.log('Sincronizando planilha...', url)
       const dadosExcel = await lerArquivoExcelUrl(url)
-      if (!dadosExcel) return false
+      if (!dadosExcel) {
+        console.warn('Falha ao carregar dados Excel')
+        return false
+      }
 
+      console.log('Dados Excel carregados:', dadosExcel)
       const dadosProcessados = processarDadosPlanilha(dadosExcel)
+      console.log('Dados processados:', dadosProcessados)
       return salvarDadosProcessados(dadosProcessados)
     } catch (e) {
       console.warn('Sincronização da planilha falhou:', e?.message || e)
