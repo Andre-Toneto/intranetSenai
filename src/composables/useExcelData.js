@@ -184,10 +184,19 @@ export const useExcelData = () => {
     const turma = extrairCampo(registro, ['turma', 'Turma', 'TURMA', 'classe', 'Classe', 'CLASSE'])
     if (turma) {
       const turmaNorm = turma.toUpperCase()
-      if (turmaNorm.startsWith('TEE') || turmaNorm.includes('ELETR')) return 'SEDUC_TEC_ELETROMECANICA'
-      if (turmaNorm.startsWith('TAD') || turmaNorm.includes('ADM')) return 'SESI_TEC_ADM'
+      console.log(`Verificando padrão de turma: "${turma}" (normalizado: "${turmaNorm}")`)
+
+      if (turmaNorm.startsWith('TEE') || turmaNorm.includes('ELETR')) {
+        console.log('✓ Identificado como SEDUC_TEC_ELETROMECANICA (padrão turma TEE)')
+        return 'SEDUC_TEC_ELETROMECANICA'
+      }
+      if (turmaNorm.startsWith('TAD') || turmaNorm.includes('ADM')) {
+        console.log('✓ Identificado como SESI_TEC_ADM (padrão turma TAD)')
+        return 'SESI_TEC_ADM'
+      }
     }
 
+    console.log('✗ Curso não identificado')
     return null
   }
 
