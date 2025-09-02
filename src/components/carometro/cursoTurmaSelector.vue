@@ -41,6 +41,15 @@
             </template>
 
             <template v-else>
+              <div class="text-center mb-3">
+                <v-chip
+                  color="success"
+                  size="small"
+                  prepend-icon="mdi-check-circle"
+                >
+                  {{ cursosDisponiveis.length }} cursos encontrados
+                </v-chip>
+              </div>
               <v-list class="pa-0">
                 <v-list-item
                   v-for="curso in cursosDisponiveis"
