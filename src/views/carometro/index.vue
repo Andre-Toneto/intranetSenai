@@ -160,10 +160,25 @@ const verificarDadosExcel = () => {
 
 onMounted(async () => {
   // Sem autenticação: acesso direto ao carômetro
+  console.log('🚀 Iniciando carômetro...')
+
+  // Forçar limpeza de cache se houver parâmetro na URL
+  const urlParams = new URLSearchParams(window.location.search)
+  if (urlParams.has('nocache') || urlParams.has('refresh')) {
+    console.log('🧹 Parâmetro de limpeza detectado, limpando cache...')
+    try {
+      localStorage.removeItem('carometro_dados_excel')
+      localStorage.removeItem('carometro_excel_timestamp')
+      sessionStorage.removeItem('carometro_selecao')
+    } catch (e) {
+      console.warn('Erro ao limpar cache:', e)
+    }
+  }
 
   // Sincroniza automaticamente se houver URL configurada (ENV/localStorage)
   try {
-    await sincronizarPlanilhaConfigurada()
+    console.log('📊 Sincronizando planilha...')
+    await sincronizarPlanilhaConfigurada(true) // Sempre forçar na primeira carga
   } catch (e) {
     console.warn('Falha ao sincronizar planilha configurada automaticamente:', e?.message || e)
   }
@@ -199,8 +214,7 @@ const voltarSelecao = () => {
   cursoSelecionado.value = {}
   turmaSelecionada.value = {}
   totalAlunos.value = 0
-  turmaCode.value = ''
-  
+
   sessionStorage.removeItem('carometro_selecao')
 }
 
