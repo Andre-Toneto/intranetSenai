@@ -260,13 +260,14 @@ import { useExcelData } from '@/composables/useExcelData.js'
 
 const emit = defineEmits(['curso-turma-selecionados', 'configurar-excel'])
 
-const { getCursosDisponiveis, getTurmasPorCurso, temDadosPlanilha } = useExcelData()
+const { getCursosDisponiveis, getTurmasPorCurso, temDadosPlanilha, sincronizarPlanilhaConfigurada, limparCache } = useExcelData()
 
 const cursosDisponiveis = ref([])
 const turmasDisponiveis = ref([])
 const cursoSelecionado = ref(null)
 const turmaSelecionada = ref(null)
 const temDadosExcel = ref(false)
+const carregandoSync = ref(false)
 
 const carregarCursos = () => {
   temDadosExcel.value = temDadosPlanilha()
