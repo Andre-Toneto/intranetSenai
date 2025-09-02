@@ -218,9 +218,18 @@
                       </template>
                       <template v-else>
                         <div class="text-center pa-6">
-                          <v-icon size="64" color="success" class="mb-2">mdi-check-circle-outline</v-icon>
-                          <h4 class="text-subtitle-1 font-weight-medium">Nenhuma ocorrência registrada</h4>
-                          <p class="text-body-2">{{ pessoa.nome }} não possui registros de ocorrências.</p>
+                          <template v-if="termoPesquisa.trim() && ocorrencias.length > 0">
+                            <!-- Nenhum resultado na pesquisa -->
+                            <v-icon size="64" color="info" class="mb-2">mdi-magnify</v-icon>
+                            <h4 class="text-subtitle-1 font-weight-medium">Nenhuma ocorrência encontrada</h4>
+                            <p class="text-body-2">Nenhuma ocorrência corresponde à pesquisa "{{ termoPesquisa }}".</p>
+                          </template>
+                          <template v-else>
+                            <!-- Nenhuma ocorrência registrada -->
+                            <v-icon size="64" color="success" class="mb-2">mdi-check-circle-outline</v-icon>
+                            <h4 class="text-subtitle-1 font-weight-medium">Nenhuma ocorrência registrada</h4>
+                            <p class="text-body-2">{{ pessoa.nome }} não possui registros de ocorrências.</p>
+                          </template>
                         </div>
                       </template>
                     </v-sheet>
