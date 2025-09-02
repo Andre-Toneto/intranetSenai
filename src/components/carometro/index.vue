@@ -516,12 +516,10 @@ const buildCandidatos = (pessoa) => {
     }
   }
   else if (cursoId === 'SEDUC_TEC_ELETROMECANICA' || cursoId === 'SEDUC TÉC ELETROMECÂNICA') {
-    // ELETROMECÂNICA: fotos/TURMA/TÉCNICO ELETROMECÂNIA/NOME.ext (estrutura invertida!)
+    // ELETROMECÂNICA: fotos/TÉCNICO ELETROMECÂNICA/TURMA/NOME.ext
     for (const ext of exts) {
       for (const n of nomes) {
-        candidatos.push(`/fotos/${enc(turma)}/TÉCNICO ELETROMECÂNIA/${enc(n)}${ext}`)
-        // Também tentar com grafia correta
-        candidatos.push(`/fotos/${enc(turma)}/TÉCNICO ELETROMECÂNICA/${enc(n)}${ext}`)
+        candidatos.push(`/fotos/TÉCNICO ELETROMECÂNICA/${enc(turma)}/${enc(n)}${ext}`)
       }
     }
   }
