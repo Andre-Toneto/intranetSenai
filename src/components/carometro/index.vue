@@ -287,7 +287,8 @@ const carregarAlunos = async () => {
       if (alunosCarregados.length > 0) {
         pessoas.value = alunosCarregados
         emit('updateTotal', pessoas.value)
-        pessoas.value.forEach(resolverFoto)
+        // Carregar fotos em lotes para melhor performance
+        carregarFotosEmLotes(pessoas.value)
         return
       }
     }
@@ -297,8 +298,8 @@ const carregarAlunos = async () => {
 
     pessoas.value = alunosCarregados
     emit('updateTotal', pessoas.value)
-    // Resolver fotos para lista
-    pessoas.value.forEach(resolverFoto)
+    // Carregar fotos em lotes para melhor performance
+    carregarFotosEmLotes(pessoas.value)
   } catch (error) {
     console.error('Erro ao carregar alunos:', error)
     pessoas.value = []
@@ -306,6 +307,30 @@ const carregarAlunos = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// Função para carregar fotos em lotes (5 por vez com delay)
+const carregarFotosEmLotes = (alunos) => {
+  const batchSize = 5
+  let currentBatch = 0
+
+  const processarLote = () => {
+    const inicio = currentBatch * batchSize
+    const fim = Math.min(inicio + batchSize, alunos.length)
+
+    for (let i = inicio; i < fim; i++) {
+      resolverFoto(alunos[i])
+    }
+
+    currentBatch++
+
+    if (fim < alunos.length) {
+      // Aguardar 100ms antes do próximo lote
+      setTimeout(processarLote, 100)
+    }
+  }
+
+  processarLote()
 }
 
 const abrirModal = (pessoa) => {
