@@ -438,57 +438,42 @@ const folderVariants = (str, isCurso = false) => {
 // Encoda segmento de URL com segurança
 const enc = (s) => encodeURIComponent(String(s || ''))
 
-// Candidatos de arquivo para tentar (inclui variações de nome e pastas) e encoding de URL
+// Candidatos de arquivo para tentar - OTIMIZADO para performance
 const buildCandidatos = (pessoa) => {
   const nome = pessoa?.nome || ''
   const raw = String(nome).trim().replace(/\s+/g, ' ')
   const rawNFC = toNFC(raw)
 
-  const nomes = Array.from(new Set([
-    // Normalizados (lower, sem acento)
-    nomeComSep(nome, '_'),
-    nomeComSep(nome, '-'),
-    baseNome(nome),
-    baseNome(nome).replace(/\s+/g, ''),
+  // Apenas as variações mais prováveis (reduzido de 18 para 6)
+  const nomes = [
+    raw, // Nome original
+    rawNFC, // Nome normalizado
+    toTitleCaseRaw(rawNFC), // Title Case com acentos
+    raw.replace(/\s+/g, '_'), // Com underscores
+    rawNFC.replace(/\s+/g, '_'), // Normalizado com underscores
+    toTitleCaseRaw(rawNFC).replace(/\s+/g, '_') // Title Case com underscores
+  ]
 
-    // Title Case a partir do normalizado (sem acento)
-    toTitleCase(nome),
-    toTitleCase(nome).replace(/\s+/g, '_'),
-    toTitleCase(nome).replace(/\s+/g, '-'),
-    toTitleCase(nome).replace(/\s+/g, ''),
+  // Apenas extensões mais comuns (reduzido de 8 para 4)
+  const exts = ['.png', '.jpg', '.jpeg', '.PNG']
 
-    // Title Case preservando acentos do original
-    toTitleCaseRaw(rawNFC),
-    toTitleCaseRaw(rawNFC).replace(/\s+/g, '_'),
-    toTitleCaseRaw(rawNFC).replace(/\s+/g, '-'),
-    toTitleCaseRaw(rawNFC).replace(/\s+/g, ''),
-
-    // Originais (como vieram, preservando acentos)
-    raw,
-    rawNFC,
-    raw.replace(/\s+/g, '_'),
-    raw.replace(/\s+/g, '-'),
-    raw.replace(/\s+/g, ''),
-    rawNFC.replace(/\s+/g, '_'),
-    rawNFC.replace(/\s+/g, '-'),
-    rawNFC.replace(/\s+/g, ''),
-  ]))
-
-  const exts = ['.jpg', '.jpeg', '.png', '.webp', '.JPG', '.JPEG', '.PNG', '.WEBP']
-
-  const cursoDirs = folderVariants(props.curso, true)
-  const turmaDirs = folderVariants(props.turma, false)
+  // Apenas as pastas mais prováveis (máximo 3 variações cada)
+  const cursoDirs = folderVariants(props.curso, true).slice(0, 3)
+  const turmaDirs = folderVariants(props.turma, false).slice(0, 3)
 
   const candidatos = []
-  for (const c of cursoDirs) {
-    for (const t of turmaDirs) {
-      for (const n of nomes) {
-        for (const ext of exts) {
+
+  // Priorizar combinações mais prováveis primeiro
+  for (const ext of exts) {
+    for (const c of cursoDirs) {
+      for (const t of turmaDirs) {
+        for (const n of nomes) {
           candidatos.push(`/fotos/${enc(c)}/${enc(t)}/${enc(n)}${ext}`)
         }
       }
     }
   }
+
   return candidatos
 }
 
