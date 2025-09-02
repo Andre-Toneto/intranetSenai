@@ -140,14 +140,28 @@ export const useExcelData = () => {
   const identificarCurso = (nomePlanilha, registro) => {
     const nome = (nomePlanilha || '').toUpperCase()
 
+    console.log(`Identificando curso para planilha: "${nomePlanilha}" (normalizado: "${nome}")`)
+
     // Verificar no nome da planilha
-    if (nome.includes('CAI')) return 'CAI'
-    if (nome.includes('SESI') && nome.includes('ADM')) return 'SESI_TEC_ADM'
-    if (nome.includes('ADMINISTRAÇÃO') || nome.includes('ADMINISTRACAO') || (nome.includes('TECNICO') && nome.includes('ADM'))) return 'SESI_TEC_ADM'
+    if (nome.includes('CAI')) {
+      console.log('✓ Identificado como CAI')
+      return 'CAI'
+    }
+    if (nome.includes('SESI') && nome.includes('ADM')) {
+      console.log('✓ Identificado como SESI_TEC_ADM (SESI + ADM)')
+      return 'SESI_TEC_ADM'
+    }
+    if (nome.includes('ADMINISTRAÇÃO') || nome.includes('ADMINISTRACAO') || (nome.includes('TECNICO') && nome.includes('ADM'))) {
+      console.log('✓ Identificado como SESI_TEC_ADM (ADMINISTRAÇÃO)')
+      return 'SESI_TEC_ADM'
+    }
     // Reconhecer eletromecânica por vários padrões
     if (nome.includes('ELETROMECÂNICA') || nome.includes('ELETROMECANICA') ||
         nome.includes('ELETROMEC') || nome.includes('SEDUC') ||
-        (nome.includes('TECNICO') && nome.includes('ELETR'))) return 'SEDUC_TEC_ELETROMECANICA'
+        (nome.includes('TECNICO') && nome.includes('ELETR'))) {
+      console.log('✓ Identificado como SEDUC_TEC_ELETROMECANICA (ELETROMECÂNICA)')
+      return 'SEDUC_TEC_ELETROMECANICA'
+    }
 
     // Verificar em campos do registro
     const campos = Object.values(registro).join(' ').toUpperCase()
