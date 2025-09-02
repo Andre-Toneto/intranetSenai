@@ -563,31 +563,39 @@ const resolverFoto = (pessoa) => {
   const key = getPessoaKey(pessoa)
   if (!key || fotoSrcs.value[key]) return
 
+  console.log(`📸 Resolvendo foto para: "${pessoa.nome}" (key: ${key})`)
+
   fotoSrcs.value[key] = 'loading' // Marca como carregando
   const candidatos = buildCandidatos(pessoa)
 
   const tryNext = (i) => {
     if (i >= candidatos.length) {
+      console.log(`❌ Foto não encontrada para "${pessoa.nome}" após ${candidatos.length} tentativas`)
       fotoSrcs.value[key] = '' // Não encontrou
       return
     }
 
     const url = candidatos[i]
+    console.log(`🔍 Tentativa ${i + 1}/${candidatos.length}: ${url}`)
+
     const img = new Image()
 
-    // Timeout de 2 segundos por imagem
+    // Timeout de 3 segundos por imagem (aumentado para debug)
     const timeout = setTimeout(() => {
+      console.log(`⏰ Timeout na tentativa ${i + 1}: ${url}`)
       img.onload = null
       img.onerror = null
       tryNext(i + 1)
-    }, 2000)
+    }, 3000)
 
     img.onload = () => {
+      console.log(`✅ Foto encontrada para "${pessoa.nome}": ${url}`)
       clearTimeout(timeout)
       fotoSrcs.value[key] = url
     }
 
     img.onerror = () => {
+      console.log(`❌ Erro ao carregar: ${url}`)
       clearTimeout(timeout)
       tryNext(i + 1)
     }
