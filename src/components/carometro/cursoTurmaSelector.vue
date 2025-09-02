@@ -215,6 +215,42 @@
         </v-btn>
       </v-col>
     </v-row>
+
+    <!-- Botões de Debug -->
+    <v-row class="mt-4">
+      <v-col cols="12" class="text-center">
+        <v-chip-group>
+          <v-chip
+            color="warning"
+            variant="outlined"
+            size="small"
+            prepend-icon="mdi-refresh"
+            @click="forcarSincronizacao"
+            :loading="carregandoSync"
+          >
+            Forçar Recarregamento
+          </v-chip>
+          <v-chip
+            color="error"
+            variant="outlined"
+            size="small"
+            prepend-icon="mdi-delete"
+            @click="limparTodoCache"
+          >
+            Limpar Cache
+          </v-chip>
+          <v-chip
+            color="info"
+            variant="outlined"
+            size="small"
+            prepend-icon="mdi-information"
+            @click="mostrarDebugInfo"
+          >
+            Debug Info
+          </v-chip>
+        </v-chip-group>
+      </v-col>
+    </v-row>
   </v-container>
 </template>
 
