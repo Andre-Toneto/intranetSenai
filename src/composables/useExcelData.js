@@ -131,24 +131,39 @@ export const useExcelData = () => {
   // Função para identificar curso baseado na planilha ou dados
   const identificarCurso = (nomePlanilha, registro) => {
     const nome = (nomePlanilha || '').toUpperCase()
-    
+
     // Verificar no nome da planilha
     if (nome.includes('CAI')) return 'CAI'
     if (nome.includes('SESI') && nome.includes('ADM')) return 'SESI_TEC_ADM'
-    if (nome.includes('SEDUC') && nome.includes('ELETROMECANICA')) return 'SEDUC_TEC_ELETROMECANICA'
-    
+    if (nome.includes('ADMINISTRAÇÃO') || nome.includes('ADMINISTRACAO') || (nome.includes('TECNICO') && nome.includes('ADM'))) return 'SESI_TEC_ADM'
+    // Reconhecer eletromecânica por vários padrões
+    if (nome.includes('ELETROMECÂNICA') || nome.includes('ELETROMECANICA') ||
+        nome.includes('ELETROMEC') || nome.includes('SEDUC') ||
+        (nome.includes('TECNICO') && nome.includes('ELETR'))) return 'SEDUC_TEC_ELETROMECANICA'
+
     // Verificar em campos do registro
     const campos = Object.values(registro).join(' ').toUpperCase()
     if (campos.includes('CAI')) return 'CAI'
     if (campos.includes('SESI') && campos.includes('ADM')) return 'SESI_TEC_ADM'
-    if (campos.includes('SEDUC') && campos.includes('ELETROMECANICA')) return 'SEDUC_TEC_ELETROMECANICA'
-    
+    if (campos.includes('ADMINISTRAÇÃO') || campos.includes('ADMINISTRACAO')) return 'SESI_TEC_ADM'
+    if (campos.includes('ELETROMECÂNICA') || campos.includes('ELETROMECANICA') ||
+        campos.includes('ELETROMEC') || campos.includes('SEDUC')) return 'SEDUC_TEC_ELETROMECANICA'
+
     // Tentar identificar por campo específico
     if (registro.curso || registro.Curso || registro.CURSO) {
       const curso = (registro.curso || registro.Curso || registro.CURSO || '').toUpperCase()
       if (curso.includes('CAI')) return 'CAI'
-      if (curso.includes('ADM')) return 'SESI_TEC_ADM'
-      if (curso.includes('ELETROMECANICA')) return 'SEDUC_TEC_ELETROMECANICA'
+      if (curso.includes('ADM') || curso.includes('ADMINISTRAÇÃO') || curso.includes('ADMINISTRACAO')) return 'SESI_TEC_ADM'
+      if (curso.includes('ELETROMECANICA') || curso.includes('ELETROMECÂNICA') ||
+          curso.includes('ELETROMEC') || curso.includes('SEDUC')) return 'SEDUC_TEC_ELETROMECANICA'
+    }
+
+    // Verificar por padrões de turma (TEEA, TEEB = Técnico Eletromecânica)
+    const turma = extrairCampo(registro, ['turma', 'Turma', 'TURMA', 'classe', 'Classe', 'CLASSE'])
+    if (turma) {
+      const turmaNorm = turma.toUpperCase()
+      if (turmaNorm.startsWith('TEE') || turmaNorm.includes('ELETR')) return 'SEDUC_TEC_ELETROMECANICA'
+      if (turmaNorm.startsWith('TAD') || turmaNorm.includes('ADM')) return 'SESI_TEC_ADM'
     }
 
     return null
