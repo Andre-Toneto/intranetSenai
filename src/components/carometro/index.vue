@@ -615,8 +615,10 @@ const getFoto = (pessoa) => {
   const cursoMapeado = mapearCursoParaPasta(props.curso)
   const nome = pessoa.nome.trim()
 
-  // Tentar primeiro o formato mais comum: nome original com .png
-  return `/fotos/${enc(cursoMapeado)}/${enc(props.turma)}/${enc(nome)}.png`
+  const urlPadrao = `/fotos/${enc(cursoMapeado)}/${enc(props.turma)}/${enc(nome)}.png`
+  console.log(`🖼️ URL padrão para "${pessoa.nome}": ${urlPadrao}`)
+
+  return urlPadrao
 }
 </script>
 
