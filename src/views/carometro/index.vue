@@ -60,9 +60,9 @@
     <!-- Carômetro (se curso/turma selecionada) -->
     <div v-else>
       <!-- Header da Turma -->
-      <v-container fluid>
+      <v-container fluid class="pb-0">
         <v-card :color="cursoSelecionado.cor || 'senai-red'" dark elevation="4" rounded="xl" class="mb-4">
-          <v-card-text class="pa-6">
+          <v-card-text class="pa-3">
             <v-row align="center">
               <v-col>
                 <div class="d-flex align-center">
@@ -70,7 +70,7 @@
                     <v-icon color="white" size="32">mdi-school</v-icon>
                   </v-avatar>
                   <div>
-                    <h2 class="text-h4 font-weight-bold mb-1">{{ turmaSelecionada.nome }}</h2>
+                    <h3 class="text-h5 font-weight-bold mb-1">{{ turmaSelecionada.nome }}</h3>
                     <p class="text-h6 opacity-90 mb-1">{{ cursoSelecionado.nome }}</p>
                     <p class="text-body-2 opacity-80 mb-0">{{ totalAlunos }} alunos cadastrados</p>
                   </div>
@@ -78,14 +78,6 @@
               </v-col>
               <v-col cols="auto">
                 <div class="d-flex gap-2">
-                  <v-btn
-                    variant="outlined"
-                    color="white"
-                    @click="abrirConfigExcel"
-                    prepend-icon="mdi-cog"
-                  >
-                    Configurar
-                  </v-btn>
                   <v-btn
                     variant="outlined"
                     color="white"

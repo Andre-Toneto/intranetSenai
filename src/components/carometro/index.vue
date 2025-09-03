@@ -2,7 +2,7 @@
   <v-container fluid>
     <!-- Campo de Busca -->
     <v-row class="mb-4" v-if="pessoas.length > 0">
-      <v-col cols="12" md="6">
+      <v-col cols="12" md="6" class="pb-0">
         <v-text-field
           v-model="termoBusca"
           label="Buscar por nome ou matrícula"
@@ -543,6 +543,7 @@ const buildCandidatos = (pessoa) => {
     for (const ext of exts) {
       for (const n of nomes) {
         candidatos.push(`/fotos/TÉCNICO ADMINISTRAÇÃO/${enc(turma)}/${enc(n)}${ext}`)
+        console.log('o que vem em candidatos',candidatos)
       }
     }
   }

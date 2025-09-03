@@ -21,7 +21,7 @@ function listarArquivos(diretorio, raiz = '') {
   try {
     if (!fs.existsSync(diretorio)) {
       console.error(`❌ Pasta não encontrada: ${diretorio}`)
-      console.log('💡 Verifique se o caminho está correto no arquivo gerar-arquivos.js')
+      
       return []
     }
 
@@ -70,53 +70,9 @@ function formatarTamanho(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
-/**
- * Gera estatísticas dos arquivos
- */
-function gerarEstatisticas(arquivos) {
-  const tipos = {}
-  let tamanhoTotal = 0
-
-  arquivos.forEach(arquivo => {
-    // Contar por tipo
-    tipos[arquivo.tipo] = (tipos[arquivo.tipo] || 0) + 1
-    
-    // Calcular tamanho total (aproximado)
-    const tamanho = arquivo.tamanho
-    if (tamanho.includes('KB')) {
-      tamanhoTotal += parseFloat(tamanho) * 1024
-    } else if (tamanho.includes('MB')) {
-      tamanhoTotal += parseFloat(tamanho) * 1024 * 1024
-    } else if (tamanho.includes('GB')) {
-      tamanhoTotal += parseFloat(tamanho) * 1024 * 1024 * 1024
-    }
-  })
-
-  return {
-    totalArquivos: arquivos.length,
-    tipos,
-    tamanhoTotal: formatarTamanho(tamanhoTotal)
-  }
-}
-
-// Executar o script
-console.log('🔍 Escaneando pasta de documentos...')
-console.log(`📁 Pasta: ${PASTA_LOCAL}`)
-console.log('━'.repeat(50))
-
 const lista = listarArquivos(PASTA_LOCAL)
 
-if (lista.length === 0) {
-  console.log('❌ Nenhum arquivo encontrado!')
-  console.log('💡 Verifique se:')
-  console.log('   - O caminho está correto')
-  console.log('   - A pasta existe e tem arquivos')
-  console.log('   - Você tem permissão para acessar a pasta')
-  process.exit(1)
-}
-
 // Gerar estatísticas
-const stats = gerarEstatisticas(lista)
 
 // Salvar arquivo JSON
 try {
@@ -127,23 +83,6 @@ try {
   }
 
   fs.writeFileSync(OUTPUT_JSON, JSON.stringify(lista, null, 2), 'utf-8')
-  
-  console.log('✅ Lista de arquivos gerada com sucesso!')
-  console.log(`📄 Arquivo: ${OUTPUT_JSON}`)
-  console.log('━'.repeat(50))
-  console.log('📊 ESTATÍSTICAS:')
-  console.log(`   📁 Total de arquivos: ${stats.totalArquivos}`)
-  console.log(`   💾 Tamanho total: ${stats.tamanhoTotal}`)
-  console.log('   📋 Tipos de arquivo:')
-  
-  Object.entries(stats.tipos)
-    .sort(([,a], [,b]) => b - a)
-    .forEach(([tipo, count]) => {
-      console.log(`      ${tipo}: ${count} arquivo${count > 1 ? 's' : ''}`)
-    })
-  
-  console.log('━'.repeat(50))
-  console.log('🎉 Pronto! Recarregue a página de formulários para ver os documentos.')
   
 } catch (error) {
   console.error('❌ Erro ao salvar arquivo:', error.message)
