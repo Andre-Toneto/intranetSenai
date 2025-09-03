@@ -78,9 +78,17 @@ export const useExcelData = () => {
         dados.forEach(registro => {
           // Identificar curso baseado no nome da planilha ou campo específico
           let cursoId = identificarCurso(nomePlanilha, registro)
-          
+
+          console.log(`Processando planilha "${nomePlanilha}":`, {
+            registro: registro,
+            cursoIdentificado: cursoId
+          })
+
           if (!cursoId) {
-            console.warn('Curso não identificado para registro:', registro)
+            console.warn('Curso não identificado para registro:', {
+              planilha: nomePlanilha,
+              registro: registro
+            })
             return
           }
 
@@ -131,26 +139,64 @@ export const useExcelData = () => {
   // Função para identificar curso baseado na planilha ou dados
   const identificarCurso = (nomePlanilha, registro) => {
     const nome = (nomePlanilha || '').toUpperCase()
-    
+
+    console.log(`Identificando curso para planilha: "${nomePlanilha}" (normalizado: "${nome}")`)
+
     // Verificar no nome da planilha
-    if (nome.includes('CAI')) return 'CAI'
-    if (nome.includes('SESI') && nome.includes('ADM')) return 'SESI_TEC_ADM'
-    if (nome.includes('SEDUC') && nome.includes('ELETROMECANICA')) return 'SEDUC_TEC_ELETROMECANICA'
-    
+    if (nome.includes('CAI')) {
+      console.log('✓ Identificado como CAI')
+      return 'CAI'
+    }
+    if (nome.includes('SESI') && nome.includes('ADM')) {
+      console.log('✓ Identificado como SESI_TEC_ADM (SESI + ADM)')
+      return 'SESI_TEC_ADM'
+    }
+    if (nome.includes('ADMINISTRAÇÃO') || nome.includes('ADMINISTRACAO') || (nome.includes('TECNICO') && nome.includes('ADM'))) {
+      console.log('✓ Identificado como SESI_TEC_ADM (ADMINISTRAÇÃO)')
+      return 'SESI_TEC_ADM'
+    }
+    // Reconhecer eletromecânica por vários padrões
+    if (nome.includes('ELETROMECÂNICA') || nome.includes('ELETROMECANICA') ||
+        nome.includes('ELETROMEC') || nome.includes('SEDUC') ||
+        (nome.includes('TECNICO') && nome.includes('ELETR'))) {
+      console.log('✓ Identificado como SEDUC_TEC_ELETROMECANICA (ELETROMECÂNICA)')
+      return 'SEDUC_TEC_ELETROMECANICA'
+    }
+
     // Verificar em campos do registro
     const campos = Object.values(registro).join(' ').toUpperCase()
     if (campos.includes('CAI')) return 'CAI'
     if (campos.includes('SESI') && campos.includes('ADM')) return 'SESI_TEC_ADM'
-    if (campos.includes('SEDUC') && campos.includes('ELETROMECANICA')) return 'SEDUC_TEC_ELETROMECANICA'
-    
+    if (campos.includes('ADMINISTRAÇÃO') || campos.includes('ADMINISTRACAO')) return 'SESI_TEC_ADM'
+    if (campos.includes('ELETROMECÂNICA') || campos.includes('ELETROMECANICA') ||
+        campos.includes('ELETROMEC') || campos.includes('SEDUC')) return 'SEDUC_TEC_ELETROMECANICA'
+
     // Tentar identificar por campo específico
     if (registro.curso || registro.Curso || registro.CURSO) {
       const curso = (registro.curso || registro.Curso || registro.CURSO || '').toUpperCase()
       if (curso.includes('CAI')) return 'CAI'
-      if (curso.includes('ADM')) return 'SESI_TEC_ADM'
-      if (curso.includes('ELETROMECANICA')) return 'SEDUC_TEC_ELETROMECANICA'
+      if (curso.includes('ADM') || curso.includes('ADMINISTRAÇÃO') || curso.includes('ADMINISTRACAO')) return 'SESI_TEC_ADM'
+      if (curso.includes('ELETROMECANICA') || curso.includes('ELETROMECÂNICA') ||
+          curso.includes('ELETROMEC') || curso.includes('SEDUC')) return 'SEDUC_TEC_ELETROMECANICA'
     }
 
+    // Verificar por padrões de turma (TEEA, TEEB = Técnico Eletromecânica)
+    const turma = extrairCampo(registro, ['turma', 'Turma', 'TURMA', 'classe', 'Classe', 'CLASSE'])
+    if (turma) {
+      const turmaNorm = turma.toUpperCase()
+      console.log(`Verificando padrão de turma: "${turma}" (normalizado: "${turmaNorm}")`)
+
+      if (turmaNorm.startsWith('TEE') || turmaNorm.includes('ELETR')) {
+        console.log('✓ Identificado como SEDUC_TEC_ELETROMECANICA (padrão turma TEE)')
+        return 'SEDUC_TEC_ELETROMECANICA'
+      }
+      if (turmaNorm.startsWith('TAD') || turmaNorm.includes('ADM')) {
+        console.log('✓ Identificado como SESI_TEC_ADM (padrão turma TAD)')
+        return 'SESI_TEC_ADM'
+      }
+    }
+
+    console.log('✗ Curso não identificado')
     return null
   }
 
@@ -349,7 +395,20 @@ export const useExcelData = () => {
   //   return normalizarUrlPlanilha(url)
   // }
   const getUrlConfigurada = () => {
-    return "https://docs.google.com/spreadsheets/d/1brCSzg2UepSJO-DoFH4xdpHlpz2SeaNm/export?format=xlsx"
+    return "https://docs.google.com/spreadsheets/d/1BKSSU6khpPjJ7x8vsbRkwc7TJcAWk3yO/export?format=xlsx"
+  }
+
+  // Função para limpar cache
+  const limparCache = () => {
+    try {
+      localStorage.removeItem('carometro_dados_excel')
+      localStorage.removeItem('carometro_excel_timestamp')
+      console.log('Cache limpo com sucesso')
+      return true
+    } catch (error) {
+      console.error('Erro ao limpar cache:', error)
+      return false
+    }
   }
 
   // Sincroniza automaticamente a planilha configurada
@@ -357,12 +416,24 @@ export const useExcelData = () => {
     try {
       const url = getUrlConfigurada()
       if (!url) return false
+
+      // Se force=true, limpar cache primeiro
+      if (force) {
+        limparCache()
+      }
+
       if (!force && temDadosPlanilha()) return true
 
+      console.log('Sincronizando planilha...', url)
       const dadosExcel = await lerArquivoExcelUrl(url)
-      if (!dadosExcel) return false
+      if (!dadosExcel) {
+        console.warn('Falha ao carregar dados Excel')
+        return false
+      }
 
+      console.log('Dados Excel carregados:', dadosExcel)
       const dadosProcessados = processarDadosPlanilha(dadosExcel)
+      console.log('Dados processados:', dadosProcessados)
       return salvarDadosProcessados(dadosProcessados)
     } catch (e) {
       console.warn('Sincronização da planilha falhou:', e?.message || e)
@@ -383,6 +454,7 @@ export const useExcelData = () => {
     temDadosPlanilha,
     normalizarUrlPlanilha,
     getUrlConfigurada,
-    sincronizarPlanilhaConfigurada
+    sincronizarPlanilhaConfigurada,
+    limparCache
   }
 }
