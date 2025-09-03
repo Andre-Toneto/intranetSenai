@@ -626,11 +626,21 @@ const getFoto = (pessoa) => {
   const turma = String(props.turma || '').replace(/\s+/g, '').trim()
   const nome = pessoa.nome.trim()
 
+  // Função para remover acentos (mesmo da buildCandidatos)
+  const removerAcentos = (str) => {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  }
+
+  // Usar nome sem acentos como padrão para TÉCNICO ADMINISTRAÇÃO
+  const nomeParaUrl = (cursoId === 'SESI_TEC_ADM' || cursoId === 'SESI TÉC ADM')
+    ? removerAcentos(nome)
+    : nome
+
   // Usar estruturas específicas por curso
   if (cursoId === 'CAI') {
     return `/fotos/CAI/${enc(turma)}/${enc(nome)}.png`
   } else if (cursoId === 'SESI_TEC_ADM' || cursoId === 'SESI TÉC ADM') {
-    return `/fotos/TÉCNICO ADMINISTRAÇÃO/${enc(turma)}/${enc(nome)}.png`
+    return `/fotos/TÉCNICO ADMINISTRAÇÃO/${enc(turma)}/${enc(nomeParaUrl)}.png`
   } else if (cursoId === 'SEDUC_TEC_ELETROMECANICA' || cursoId === 'SEDUC TÉC ELETROMECÂNICA') {
     return `/fotos/TÉCNICO ELETROMECÂNICA/${enc(turma)}/${enc(nome)}.png`
   }
