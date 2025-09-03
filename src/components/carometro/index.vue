@@ -554,7 +554,6 @@ const buildCandidatos = (pessoa) => {
     for (const ext of exts) {
       for (const n of nomes) {
         candidatos.push(`/fotos/TÉCNICO ADMINISTRAÇÃO/${enc(turma)}/${enc(n)}${ext}`)
-        console.log('o que vem em candidatos',candidatos)
       }
     }
   }
