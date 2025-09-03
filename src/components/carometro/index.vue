@@ -512,14 +512,25 @@ const buildCandidatos = (pessoa) => {
   const nome = pessoa?.nome || ''
   const raw = String(nome).trim().replace(/\s+/g, ' ')
 
-  // Variações do nome (reduzidas)
+  // Função para remover acentos
+  const removerAcentos = (str) => {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  }
+
+  // Variações do nome incluindo versões sem acentos
   const nomes = [
     raw, // Nome original
+    removerAcentos(raw), // Nome sem acentos
     raw.replace(/\s+/g, '_'), // Com underscores
+    removerAcentos(raw).replace(/\s+/g, '_'), // Sem acentos e com underscores
     raw.replace(/\s+/g, ' ').split(' ').map(p =>
       p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
     ).join(' '), // Title Case
-    raw.toUpperCase() // Maiúsculo
+    removerAcentos(raw).replace(/\s+/g, ' ').split(' ').map(p =>
+      p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
+    ).join(' '), // Title Case sem acentos
+    raw.toUpperCase(), // Maiúsculo
+    removerAcentos(raw).toUpperCase() // Maiúsculo sem acentos
   ]
 
   const exts = ['.png', '.jpg', '.PNG', '.jpeg']
