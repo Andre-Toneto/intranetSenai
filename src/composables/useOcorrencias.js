@@ -24,7 +24,8 @@ export const useOcorrencias = () => {
         loaded.value = true
         return
       }
-      const resp = await fetch('/data/ocorrencias.json', { cache: 'no-store' })
+      const base = (import.meta && import.meta.env && import.meta.env.BASE_URL) ? import.meta.env.BASE_URL : './'
+      const resp = await fetch(`${base}data/ocorrencias.json`, { cache: 'no-store' })
       if (resp.ok) {
         const json = await resp.json()
         store.value = json && json.registros ? json : { version: 1, updatedAt: null, registros: {} }
@@ -148,7 +149,7 @@ export const useOcorrencias = () => {
       const arr = getPath(cursoId, turmaId, alunoId)
       if (!arr) throw new Error('Curso, Turma e Aluno são obrigatórios')
       const i = arr.findIndex(o => o.id === ocorrenciaId)
-      if (i === -1) throw new Error('Ocorr��ncia não encontrada')
+      if (i === -1) throw new Error('Ocorrência não encontrada')
       arr[i] = { ...arr[i], ...patch }
       persist()
       if (remoteReady()) {
