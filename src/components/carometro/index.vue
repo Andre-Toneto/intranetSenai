@@ -69,18 +69,6 @@
               <span v-else>Dados locais ou sincronizados</span>
             </p>
           </div>
-          <div class="d-flex ga-2 flex-wrap">
-            <v-btn
-              variant="outlined"
-              color="primary"
-              prepend-icon="mdi-refresh"
-              size="small"
-              :loading="loadingRefresh"
-              @click="atualizarDados"
-            >
-              Atualizar
-            </v-btn>
-          </div>
         </div>
       </v-col>
     </v-row>
