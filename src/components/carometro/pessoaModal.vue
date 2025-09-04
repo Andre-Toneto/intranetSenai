@@ -572,7 +572,7 @@ const getEndereco = () => {
 const getCidade = () => {
   const cidade = props.pessoa.cidade || ''
   const estado = props.pessoa.estado || ''
-  
+
   if (cidade && estado) {
     return `${cidade} - ${estado}`
   } else if (cidade) {
@@ -580,7 +580,19 @@ const getCidade = () => {
   } else if (estado) {
     return estado
   }
-  
+
   return 'Não informado'
+}
+
+const configurarWebAppUrl = () => {
+  const atual = getRemote && getRemote()
+  const url = prompt('Cole a URL do seu Web App (Apps Script):', atual || '')
+  if (!url) return
+  try {
+    setRemote(url)
+    alert('Conectado! As ocorrências serão salvas na planilha.')
+  } catch (e) {
+    alert('URL inválida: ' + (e?.message || e))
+  }
 }
 </script>
