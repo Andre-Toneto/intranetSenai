@@ -1,46 +1,134 @@
 import { ref } from 'vue'
 import { useExcelData } from '@/composables/useExcelData.js'
-import { useCarometro } from '@/composables/useCarometro.js'
+import { useRemoteOcorrencias } from '@/composables/useRemoteOcorrencias.js'
 
 export const useOcorrencias = () => {
-  const { carregarDadosProcessados, salvarDadosProcessados, temDadosPlanilha } = useExcelData()
-  const { getAlunosTurma, saveAlunosTurma } = useCarometro()
+  const { carregarDadosProcessados, temDadosPlanilha } = useExcelData()
+  const { isConfigured: remoteReady, list: rList, add: rAdd, update: rUpdate, remove: rRemove, setUrl: setRemoteUrl, getUrl: getRemoteUrl } = useRemoteOcorrencias()
   const saving = ref(false)
 
-  const normalizeArray = (arr) => Array.isArray(arr) ? arr : []
+  const STORAGE_KEY = 'carometro_ocorrencias_store'
+  const store = ref({ version: 1, updatedAt: null, registros: {}, tombstones: {} })
+  const loaded = ref(false)
 
+  const normalizeArray = (arr) => Array.isArray(arr) ? arr : []
   const genId = () => `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 
-  const findAlunoExcel = (cursoId, turmaId, alunoId) => {
-    const dados = carregarDadosProcessados()
-    if (!dados || !cursoId || !turmaId || !alunoId) return { dados: null, aluno: null, turma: null }
-    const curso = dados.cursos?.[cursoId]
-    const turma = curso?.turmas?.[turmaId]
-    if (!turma) return { dados, aluno: null, turma: null }
-    const idx = turma.alunos.findIndex(a => a.id === alunoId || a.matricula === alunoId)
-    const aluno = idx >= 0 ? turma.alunos[idx] : null
-    return { dados, aluno, turma, idx }
+  const ensureLoaded = async () => {
+    if (loaded.value) return
+    try {
+      const cached = localStorage.getItem(STORAGE_KEY)
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        store.value = { tombstones: {}, ...parsed, registros: parsed.registros || {}, tombstones: parsed.tombstones || {} }
+        loaded.value = true
+        return
+      }
+      const base = (import.meta && import.meta.env && import.meta.env.BASE_URL) ? import.meta.env.BASE_URL : './'
+      const resp = await fetch(`${base}data/ocorrencias.json`, { cache: 'no-store' })
+      if (resp.ok) {
+        const json = await resp.json()
+        const base = json && typeof json === 'object' ? json : {}
+        store.value = {
+          version: 1,
+          updatedAt: base.updatedAt || null,
+          registros: base.registros || {},
+          tombstones: base.tombstones || {}
+        }
+      }
+    } catch (e) {
+      // fallback silently
+      store.value = { version: 1, updatedAt: null, registros: {}, tombstones: {} }
+    } finally {
+      loaded.value = true
+      persist()
+    }
   }
 
-  const findAlunoFallback = (turmaId, alunoId) => {
-    const alunos = getAlunosTurma(turmaId)
-    const idx = alunos.findIndex(a => a.id === alunoId || a.matricula === alunoId)
-    const aluno = idx >= 0 ? alunos[idx] : null
-    return { alunos, aluno, idx }
+  const persist = () => {
+    try {
+      store.value.updatedAt = new Date().toISOString()
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store.value))
+    } catch {}
+  }
+
+  const getPath = (cursoId, turmaId, alunoId) => {
+    const c = String(cursoId || '').trim()
+    const t = String(turmaId || '').trim()
+    const a = String(alunoId || '').trim()
+    if (!c || !t || !a) return null
+    if (!store.value || typeof store.value !== 'object') store.value = { version: 1, updatedAt: null, registros: {}, tombstones: {} }
+    if (!store.value.registros || typeof store.value.registros !== 'object') store.value.registros = {}
+    if (!store.value.registros[c]) store.value.registros[c] = {}
+    if (!store.value.registros[c][t]) store.value.registros[c][t] = {}
+    if (!store.value.registros[c][t][a]) store.value.registros[c][t][a] = []
+    return store.value.registros[c][t][a]
+  }
+
+  const getTombs = (cursoId, turmaId, alunoId) => {
+    const c = String(cursoId || '').trim()
+    const t = String(turmaId || '').trim()
+    const a = String(alunoId || '').trim()
+    if (!c || !t || !a) return null
+    if (!store.value || typeof store.value !== 'object') store.value = { version: 1, updatedAt: null, registros: {}, tombstones: {} }
+    if (!store.value.tombstones || typeof store.value.tombstones !== 'object') store.value.tombstones = {}
+    if (!store.value.tombstones[c]) store.value.tombstones[c] = {}
+    if (!store.value.tombstones[c][t]) store.value.tombstones[c][t] = {}
+    if (!store.value.tombstones[c][t][a]) store.value.tombstones[c][t][a] = {}
+    return store.value.tombstones[c][t][a]
+  }
+
+  const importLegacyIfNeeded = (cursoId, turmaId, alunoId) => {
+    // Importa ocorrências embutidas no aluno da planilha (legado) apenas uma vez
+    if (!temDadosPlanilha()) return
+    try {
+      const dados = carregarDadosProcessados()
+      const aluno = dados?.cursos?.[cursoId]?.turmas?.[turmaId]?.alunos?.find(
+        a => a.id === alunoId || a.matricula === alunoId
+      )
+      const atuais = getPath(cursoId, turmaId, alunoId)
+      if (aluno && Array.isArray(aluno.ocorrencias) && atuais.length === 0 && aluno.ocorrencias.length > 0) {
+        aluno.ocorrencias.forEach(o => atuais.push(o))
+        persist()
+      }
+    } catch {}
   }
 
   const list = (cursoId, turmaId, alunoId) => {
-    if (temDadosPlanilha() && cursoId) {
-      const { aluno } = findAlunoExcel(cursoId, turmaId, alunoId)
-      return normalizeArray(aluno?.ocorrencias)
+    ensureLoaded()
+    const arr = getPath(cursoId, turmaId, alunoId) || []
+    if (arr.length === 0) importLegacyIfNeeded(cursoId, turmaId, alunoId)
+    return [...(getPath(cursoId, turmaId, alunoId) || [])]
+  }
+
+  const refreshFromRemote = async (cursoId, turmaId, alunoId) => {
+    if (!cursoId || !turmaId || !alunoId) return list(cursoId, turmaId, alunoId)
+    if (!remoteReady()) return list(cursoId, turmaId, alunoId)
+    try {
+      const items = await rList(cursoId, turmaId, alunoId)
+      const current = getPath(cursoId, turmaId, alunoId) || []
+      const tombs = getTombs(cursoId, turmaId, alunoId) || {}
+      const map = new Map(current.map(o => [o.id, o]))
+      items.forEach(o => map.set(o.id, o))
+      const merged = Array.from(map.values()).filter(o => !tombs[o.id])
+      const target = getPath(cursoId, turmaId, alunoId)
+      if (target) {
+        store.value.registros[cursoId][turmaId][alunoId] = merged
+        persist()
+      }
+      return list(cursoId, turmaId, alunoId)
+    } catch {
+      return list(cursoId, turmaId, alunoId)
     }
-    const { aluno } = findAlunoFallback(turmaId, alunoId)
-    return normalizeArray(aluno?.ocorrencias)
   }
 
   const add = async (cursoId, turmaId, alunoId, payload) => {
     saving.value = true
     try {
+      await ensureLoaded()
+      const arr = getPath(cursoId, turmaId, alunoId)
+      const tombs = getTombs(cursoId, turmaId, alunoId)
+      if (!arr || !tombs) throw new Error('Curso, Turma e Aluno são obrigatórios')
       const nova = {
         id: genId(),
         tipo: (payload?.tipo || 'Outro'),
@@ -48,23 +136,17 @@ export const useOcorrencias = () => {
         data: payload?.data || new Date().toISOString(),
         autor: payload?.autor || 'Administrador'
       }
-
-      if (temDadosPlanilha() && cursoId) {
-        const { dados, aluno } = findAlunoExcel(cursoId, turmaId, alunoId)
-        if (!dados || !aluno) throw new Error('Aluno não encontrado')
-        aluno.ocorrencias = normalizeArray(aluno.ocorrencias)
-        aluno.ocorrencias.unshift(nova)
-        if (!salvarDadosProcessados(dados)) throw new Error('Falha ao salvar dados')
-        return nova
-      } else {
-        const { alunos, aluno, idx } = findAlunoFallback(turmaId, alunoId)
-        if (!aluno) throw new Error('Aluno não encontrado')
-        aluno.ocorrencias = normalizeArray(aluno.ocorrencias)
-        aluno.ocorrencias.unshift(nova)
-        alunos[idx] = aluno
-        if (!saveAlunosTurma(turmaId, alunos)) throw new Error('Falha ao salvar dados')
-        return nova
+      delete tombs[nova.id]
+      arr.unshift(nova)
+      persist()
+      if (remoteReady()) {
+        rAdd(cursoId, turmaId, alunoId, nova).then(remoteItem => {
+          const idx = arr.findIndex(o => o.id === nova.id)
+          if (idx >= 0) arr[idx] = { ...arr[idx], ...remoteItem }
+          persist()
+        }).catch(() => {})
       }
+      return nova
     } finally {
       saving.value = false
     }
@@ -73,26 +155,17 @@ export const useOcorrencias = () => {
   const update = async (cursoId, turmaId, alunoId, ocorrenciaId, patch) => {
     saving.value = true
     try {
-      if (temDadosPlanilha() && cursoId) {
-        const { dados, aluno } = findAlunoExcel(cursoId, turmaId, alunoId)
-        if (!dados || !aluno) throw new Error('Aluno não encontrado')
-        aluno.ocorrencias = normalizeArray(aluno.ocorrencias)
-        const i = aluno.ocorrencias.findIndex(o => o.id === ocorrenciaId)
-        if (i === -1) throw new Error('Ocorrência não encontrada')
-        aluno.ocorrencias[i] = { ...aluno.ocorrencias[i], ...patch }
-        if (!salvarDadosProcessados(dados)) throw new Error('Falha ao salvar dados')
-        return aluno.ocorrencias[i]
-      } else {
-        const { alunos, aluno, idx } = findAlunoFallback(turmaId, alunoId)
-        if (!aluno) throw new Error('Aluno não encontrado')
-        aluno.ocorrencias = normalizeArray(aluno.ocorrencias)
-        const i = aluno.ocorrencias.findIndex(o => o.id === ocorrenciaId)
-        if (i === -1) throw new Error('Ocorrência não encontrada')
-        aluno.ocorrencias[i] = { ...aluno.ocorrencias[i], ...patch }
-        alunos[idx] = aluno
-        if (!saveAlunosTurma(turmaId, alunos)) throw new Error('Falha ao salvar dados')
-        return aluno.ocorrencias[i]
+      await ensureLoaded()
+      const arr = getPath(cursoId, turmaId, alunoId)
+      if (!arr) throw new Error('Curso, Turma e Aluno são obrigatórios')
+      const i = arr.findIndex(o => o.id === ocorrenciaId)
+      if (i === -1) throw new Error('Ocorrência não encontrada')
+      arr[i] = { ...arr[i], ...patch }
+      persist()
+      if (remoteReady()) {
+        rUpdate(cursoId, turmaId, alunoId, ocorrenciaId, patch).catch(() => {})
       }
+      return arr[i]
     } finally {
       saving.value = false
     }
@@ -101,28 +174,46 @@ export const useOcorrencias = () => {
   const remove = async (cursoId, turmaId, alunoId, ocorrenciaId) => {
     saving.value = true
     try {
-      if (temDadosPlanilha() && cursoId) {
-        const { dados, aluno } = findAlunoExcel(cursoId, turmaId, alunoId)
-        if (!dados || !aluno) throw new Error('Aluno não encontrado')
-        aluno.ocorrencias = normalizeArray(aluno.ocorrencias)
-        const nova = aluno.ocorrencias.filter(o => o.id !== ocorrenciaId)
-        aluno.ocorrencias = nova
-        if (!salvarDadosProcessados(dados)) throw new Error('Falha ao salvar dados')
-        return true
-      } else {
-        const { alunos, aluno, idx } = findAlunoFallback(turmaId, alunoId)
-        if (!aluno) throw new Error('Aluno não encontrado')
-        aluno.ocorrencias = normalizeArray(aluno.ocorrencias)
-        const nova = aluno.ocorrencias.filter(o => o.id !== ocorrenciaId)
-        aluno.ocorrencias = nova
-        alunos[idx] = aluno
-        if (!saveAlunosTurma(turmaId, alunos)) throw new Error('Falha ao salvar dados')
-        return true
+      await ensureLoaded()
+      const arr = getPath(cursoId, turmaId, alunoId)
+      const tombs = getTombs(cursoId, turmaId, alunoId)
+      if (!arr || !tombs) throw new Error('Curso, Turma e Aluno são obrigatórios')
+      const nova = arr.filter(o => o.id !== ocorrenciaId)
+      store.value.registros[cursoId][turmaId][alunoId] = nova
+      tombs[ocorrenciaId] = true
+      persist()
+      if (remoteReady()) {
+        rRemove(cursoId, turmaId, alunoId, ocorrenciaId).catch(() => {})
       }
+      return true
     } finally {
       saving.value = false
     }
   }
 
-  return { saving, list, add, update, remove }
+  const exportToFile = () => {
+    const dataStr = JSON.stringify(store.value, null, 2)
+    const blob = new Blob([dataStr], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'ocorrencias.json'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const importFromObject = (obj) => {
+    if (!obj || typeof obj !== 'object') throw new Error('Arquivo inválido')
+    const registros = obj.registros && typeof obj.registros === 'object' ? obj.registros : {}
+    const tombstones = obj.tombstones && typeof obj.tombstones === 'object' ? obj.tombstones : {}
+    store.value = { version: 1, updatedAt: new Date().toISOString(), registros, tombstones }
+    persist()
+  }
+
+  const getRemote = () => getRemoteUrl()
+  const setRemote = (url) => setRemoteUrl(url)
+
+  return { saving, list, add, update, remove, exportToFile, importFromObject, getRemote, setRemote, refreshFromRemote }
 }

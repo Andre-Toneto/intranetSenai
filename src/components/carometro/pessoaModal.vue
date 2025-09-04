@@ -133,14 +133,16 @@
                         <v-icon color="error" class="mr-2">mdi-history</v-icon>
                         <h3 class="text-subtitle-1 font-weight-medium">Histórico de Ocorrências</h3>
                       </div>
-                      <v-chip v-if="ocorrencias?.length" size="small" color="error" variant="outlined">
-                        <template v-if="termoPesquisa.trim() && ocorrenciasFiltradas.length !== ocorrencias.length">
-                          {{ ocorrenciasFiltradas.length }} de {{ ocorrencias.length }}
-                        </template>
-                        <template v-else>
-                          {{ ocorrencias.length }} registro{{ ocorrencias.length !== 1 ? 's' : '' }}
-                        </template>
-                      </v-chip>
+                      <div class="d-flex align-center ga-2">
+                        <v-chip v-if="ocorrencias?.length" size="small" color="error" variant="outlined" class="mr-2">
+                          <template v-if="termoPesquisa.trim() && ocorrenciasFiltradas.length !== ocorrencias.length">
+                            {{ ocorrenciasFiltradas.length }} de {{ ocorrencias.length }}
+                          </template>
+                          <template v-else>
+                            {{ ocorrencias.length }} registro{{ ocorrencias.length !== 1 ? 's' : '' }}
+                          </template>
+                        </v-chip>
+                      </div>
                     </div>
 
                     <!-- Barra de pesquisa e botão para adicionar ocorrência -->
@@ -193,7 +195,7 @@
                                   <div class="d-flex align-center justify-space-between">
                                     <p class="text-caption d-flex align-center">
                                       <v-icon size="12" class="mr-1">mdi-calendar</v-icon>
-                                      {{ new Date(ocorrencia.data || Date.now()).toLocaleDateString('pt-BR') }}
+                                      {{ formatData(ocorrencia.data) }}
                                     </p>
                                     <p class="text-caption d-flex align-center">
                                       <v-icon size="12" class="mr-1">mdi-account</v-icon>
@@ -216,7 +218,7 @@
                                   size="x-small"
                                   variant="text"
                                   color="error"
-                                  @click="excluirOcorrencia(ocorrencia)"
+                                  @click="abrirConfirmacaoExclusao(ocorrencia)"
                                 />
                               </div>
                             </div>
@@ -255,6 +257,33 @@
           Voltar
         </v-btn>
         <v-spacer />
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
+  <!-- Confirmação de Exclusão -->
+  <v-dialog v-model="confirmDelete" max-width="420">
+    <v-card>
+      <v-card-title class="text-h6 d-flex align-center"><v-icon class="mr-2" color="error">mdi-trash-can</v-icon>Confirmar exclusão</v-card-title>
+      <v-card-text>
+        Tem certeza que deseja excluir esta ocorrência?
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="outlined" @click="confirmDelete = false">Cancelar</v-btn>
+        <v-btn color="error" @click="confirmarExclusao">Excluir</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
+  <!-- Alerta/Erro -->
+  <v-dialog v-model="errorDialog" max-width="440">
+    <v-card>
+      <v-card-title class="text-h6 d-flex align-center"><v-icon class="mr-2" color="warning">mdi-alert</v-icon>Atenção</v-card-title>
+      <v-card-text>{{ errorMessage }}</v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn color="primary" @click="errorDialog = false">Ok</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -354,7 +383,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 // Composable para ocorrências
-const { saving, list, add, update, remove } = useOcorrencias()
+const { saving, list, add, update, remove, refreshFromRemote } = useOcorrencias()
 
 // Estado do modal de ocorrência
 const modalOcorrencia = ref(false)
@@ -379,14 +408,24 @@ watch(() => props.pessoa, (novaPessoa) => {
 }, { immediate: true })
 
 // Funções para gerenciar ocorrências
-const carregarOcorrencias = () => {
-  if (!props.pessoa?.id && !props.pessoa?.matricula) return
+const alunoKey = () => {
+  if (props.pessoa?.matricula) return String(props.pessoa.matricula)
+  const nome = String(props.pessoa?.nome || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  return nome
+}
 
-  const alunoId = props.pessoa.id || props.pessoa.matricula
-  const cursoId = props.curso?.id
-  const turmaId = props.turma?.id || props.turma?.nome
+const carregarOcorrencias = async () => {
+  if (!props.pessoa?.matricula && !props.pessoa?.nome) return
+
+  const alunoId = alunoKey()
+  const cursoId = props.curso?.id || props.curso
+  const turmaId = props.turma?.id || props.turma?.nome || props.turma
+  if (!cursoId || !turmaId || !alunoId) return
 
   ocorrencias.value = list(cursoId, turmaId, alunoId)
+  filtrarOcorrencias()
+  const atualizadas = await refreshFromRemote(cursoId, turmaId, alunoId)
+  ocorrencias.value = atualizadas
   filtrarOcorrencias()
 }
 
@@ -450,52 +489,69 @@ const abrirModalOcorrencia = (ocorrencia = null) => {
 
 const salvarOcorrencia = async () => {
   if (!formOcorrencia.value.descricao.trim() || !formOcorrencia.value.autor.trim()) {
-    alert('Descrição e professor são obrigatórios!')
+    errorMessage.value = 'Preencha os campos obrigatórios: Descrição e Professor/Responsável.'
+    errorDialog.value = true
     return
   }
 
   try {
-    const alunoId = props.pessoa.id || props.pessoa.matricula
-    const cursoId = props.curso?.id
-    const turmaId = props.turma?.id || props.turma?.nome
+    const alunoId = alunoKey()
+    const cursoId = props.curso?.id || props.curso
+    const turmaId = props.turma?.id || props.turma?.nome || props.turma
+
+    if (!cursoId || !turmaId || !alunoId) {
+      throw new Error('Curso, Turma e Aluno são obrigatórios')
+    }
 
     if (editandoOcorrencia.value) {
-      // Atualizar ocorrência existente
       await update(cursoId, turmaId, alunoId, editandoOcorrencia.value.id, {
         ...formOcorrencia.value,
-        data: new Date(formOcorrencia.value.data).toISOString()
+        data: `${formOcorrencia.value.data}T00:00:00`
       })
     } else {
-      // Adicionar nova ocorrência
       await add(cursoId, turmaId, alunoId, {
         ...formOcorrencia.value,
-        data: new Date(formOcorrencia.value.data).toISOString()
+        data: `${formOcorrencia.value.data}T00:00:00`
       })
     }
 
-    carregarOcorrencias()
+    // Fecha o modal imediatamente para sensação de rapidez
     modalOcorrencia.value = false
+    // Atualiza a lista em background
+    carregarOcorrencias()
   } catch (error) {
     console.error('Erro ao salvar ocorrência:', error)
-    alert('Erro ao salvar ocorrência: ' + error.message)
+    errorMessage.value = 'Erro ao salvar ocorrência: ' + (error?.message || 'Desconhecido')
+    errorDialog.value = true
   }
 }
 
-const excluirOcorrencia = async (ocorrencia) => {
-  if (!confirm('Tem certeza que deseja excluir esta ocorrência?')) return
+const confirmDelete = ref(false)
+const toDelete = ref(null)
 
+const abrirConfirmacaoExclusao = (oc) => {
+  toDelete.value = oc
+  confirmDelete.value = true
+}
+
+const confirmarExclusao = async () => {
+  if (!toDelete.value) { confirmDelete.value = false; return }
   try {
-    const alunoId = props.pessoa.id || props.pessoa.matricula
-    const cursoId = props.curso?.id
-    const turmaId = props.turma?.id || props.turma?.nome
-
-    await remove(cursoId, turmaId, alunoId, ocorrencia.id)
-    carregarOcorrencias()
+    const alunoId = alunoKey()
+    const cursoId = props.curso?.id || props.curso
+    const turmaId = props.turma?.id || props.turma?.nome || props.turma
+    if (!cursoId || !turmaId || !alunoId) throw new Error('Curso, Turma e Aluno são obrigatórios')
+    await remove(cursoId, turmaId, alunoId, toDelete.value.id)
+    confirmDelete.value = false
+    toDelete.value = null
+    await carregarOcorrencias()
   } catch (error) {
     console.error('Erro ao excluir ocorrência:', error)
-    alert('Erro ao excluir ocorrência: ' + error.message)
+    errorMessage.value = 'Erro ao excluir ocorrência: ' + (error?.message || 'Desconhecido')
+    errorDialog.value = true
   }
 }
+
 
 // Tipos de ocorrência disponíveis
 const tiposOcorrencia = [
@@ -530,7 +586,7 @@ const getEndereco = () => {
 const getCidade = () => {
   const cidade = props.pessoa.cidade || ''
   const estado = props.pessoa.estado || ''
-  
+
   if (cidade && estado) {
     return `${cidade} - ${estado}`
   } else if (cidade) {
@@ -538,7 +594,20 @@ const getCidade = () => {
   } else if (estado) {
     return estado
   }
-  
+
   return 'Não informado'
 }
+
+// Formata data sem deslocamento de fuso quando vier em AAAA-MM-DD/ISO
+const formatData = (valor) => {
+  const s = String(valor || '')
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`
+  try { return new Date(s).toLocaleDateString('pt-BR') } catch { return s }
+}
+
+// Dialogs
+const errorDialog = ref(false)
+const errorMessage = ref('')
+
 </script>

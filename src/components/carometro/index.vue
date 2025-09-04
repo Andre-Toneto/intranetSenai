@@ -2,7 +2,7 @@
   <v-container fluid>
     <!-- Campo de Busca -->
     <v-row class="mb-4" v-if="pessoas.length > 0">
-      <v-col cols="12" md="6">
+      <v-col cols="12" md="6" class="pb-0">
         <v-text-field
           v-model="termoBusca"
           label="Buscar por nome ou matrícula"
@@ -68,18 +68,6 @@
               <span v-if="temDadosExcel && props.curso">Dados da planilha Excel</span>
               <span v-else>Dados locais ou sincronizados</span>
             </p>
-          </div>
-          <div class="d-flex ga-2 flex-wrap">
-            <v-btn
-              variant="outlined"
-              color="primary"
-              prepend-icon="mdi-refresh"
-              size="small"
-              :loading="loadingRefresh"
-              @click="atualizarDados"
-            >
-              Atualizar
-            </v-btn>
           </div>
         </div>
       </v-col>
@@ -183,11 +171,19 @@
           <!-- Avatar/Foto -->
           <div class="text-center pt-6 pb-2">
             <v-avatar size="80" class="elevation-4">
-              <v-img :src="fotoSrcs[getPessoaKey(pessoa)] || getFoto(pessoa)" cover>
-                <template #error>
-                  <v-icon size="40" color="grey-lighten-1">mdi-account</v-icon>
-                </template>
-              </v-img>
+              <template v-if="fotoSrcs[getPessoaKey(pessoa)] === 'loading'">
+                <v-progress-circular indeterminate size="40" color="primary" />
+              </template>
+              <template v-else>
+                <v-img :src="fotoSrcs[getPessoaKey(pessoa)] || getFoto(pessoa)" cover>
+                  <template #placeholder>
+                    <v-skeleton-loader type="avatar" />
+                  </template>
+                  <template #error>
+                    <v-icon size="40" color="grey-lighten-1">mdi-account</v-icon>
+                  </template>
+                </v-img>
+              </template>
             </v-avatar>
           </div>
 
@@ -277,9 +273,12 @@ const carregarAlunos = async () => {
       alunosCarregados = getAlunosPorCursoTurma(props.curso, props.turma)
 
       if (alunosCarregados.length > 0) {
+        console.log(`👥 ${alunosCarregados.length} alunos carregados da planilha`)
+
         pessoas.value = alunosCarregados
         emit('updateTotal', pessoas.value)
-        pessoas.value.forEach(resolverFoto)
+        // Carregar fotos em lotes para melhor performance
+        carregarFotosEmLotes(pessoas.value)
         return
       }
     }
@@ -289,8 +288,8 @@ const carregarAlunos = async () => {
 
     pessoas.value = alunosCarregados
     emit('updateTotal', pessoas.value)
-    // Resolver fotos para lista
-    pessoas.value.forEach(resolverFoto)
+    // Carregar fotos em lotes para melhor performance
+    carregarFotosEmLotes(pessoas.value)
   } catch (error) {
     console.error('Erro ao carregar alunos:', error)
     pessoas.value = []
@@ -298,6 +297,59 @@ const carregarAlunos = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// Função para testar URLs conhecidas
+const testarUrlsConhecidas = () => {
+  const turmaNormalizada = String(props.turma || '').replace(/\s+/g, '').trim()
+  const base = (import.meta && import.meta.env && import.meta.env.BASE_URL) ? import.meta.env.BASE_URL : './'
+
+  if (props.curso === 'SEDUC_TEC_ELETROMECANICA' && turmaNormalizada === 'TEEA2') {
+    const urlsConhecidas = [
+      `${base}fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Alice Vitória Moreira Silva.png`,
+      `${base}fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Anderson Franco De Jesus.png`,
+      `${base}fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Caio Gabriel Santana Da Silva.png`
+    ]
+
+    console.log(`🧪 TESTANDO URLs CONHECIDAS (turma: "${props.turma}" → "${turmaNormalizada}"):`)
+    urlsConhecidas.forEach((url, i) => {
+      console.log(`  ${i+1}. Testando: ${url}`)
+
+      const img = new Image()
+      img.onload = () => console.log(`  ✅ SUCESSO: ${url}`)
+      img.onerror = () => console.log(`  ❌ FALHOU: ${url}`)
+      img.src = url
+    })
+  }
+}
+
+// Função para carregar fotos em lotes (5 por vez com delay)
+const carregarFotosEmLotes = (alunos) => {
+  // Testar URLs conhecidas primeiro
+  testarUrlsConhecidas()
+
+  const batchSize = 3 // Reduzido para debug
+  let currentBatch = 0
+
+  const processarLote = () => {
+    const inicio = currentBatch * batchSize
+    const fim = Math.min(inicio + batchSize, alunos.length)
+
+    console.log(`📦 Processando lote ${currentBatch + 1}: alunos ${inicio + 1} a ${fim}`)
+
+    for (let i = inicio; i < fim; i++) {
+      resolverFoto(alunos[i])
+    }
+
+    currentBatch++
+
+    if (fim < alunos.length) {
+      // Aguardar 500ms antes do próximo lote para debug
+      setTimeout(processarLote, 500)
+    }
+  }
+
+  processarLote()
 }
 
 const abrirModal = (pessoa) => {
@@ -336,6 +388,19 @@ watch(() => [props.turma, props.curso], ([newTurma, newCurso]) => {
     carregarAlunos()
   }
 })
+
+// Watch para pré-carregar fotos dos alunos filtrados
+watch(pessoasFiltradas, (novaLista) => {
+  if (novaLista.length > 0) {
+    // Pré-carregar fotos dos primeiros 10 alunos visíveis
+    novaLista.slice(0, 10).forEach(pessoa => {
+      const key = getPessoaKey(pessoa)
+      if (!fotoSrcs.value[key] || fotoSrcs.value[key] === '') {
+        resolverFoto(pessoa)
+      }
+    })
+  }
+}, { immediate: true })
 
 // Funções auxiliares para badge
 const getCorBadge = () => {
@@ -397,77 +462,90 @@ const toNFC = (s) => {
   try { return String(s || '').normalize('NFC') } catch { return String(s || '') }
 }
 
+// Mapear nomes de cursos para nomes reais das pastas
+const mapearCursoParaPasta = (cursoNome) => {
+  const mapeamento = {
+    'CAI': 'CAI',
+    'SESI_TEC_ADM': 'TÉCNICO ADMINISTRAÇÃO',
+    'SEDUC_TEC_ELETROMECANICA': 'TÉCNICO ELETROMECÂNICA',
+    'SESI TÉC ADM': 'TÉCNICO ADMINISTRAÇÃO',
+    'SEDUC TÉC ELETROMECÂNICA': 'TÉCNICO ELETROMECÂNICA'
+  }
+
+  return mapeamento[cursoNome] || cursoNome
+}
+
 // Gera variações possíveis para pastas de curso/turma
-const folderVariants = (str) => {
-  const raw = String(str || '').trim().replace(/\s+/g, ' ')
+const folderVariants = (str, isCurso = false) => {
+  const strMapeado = isCurso ? mapearCursoParaPasta(str) : str
+  const raw = String(strMapeado || '').trim().replace(/\s+/g, ' ')
   const rawNFC = toNFC(raw)
-  return [
-    raw,
-    rawNFC,
-    raw.toUpperCase(),
-    raw.toLowerCase(),
-    rawNFC.toUpperCase(),
-    rawNFC.toLowerCase(),
-    nomeComSep(str, '_'),
-    nomeComSep(str, '-'),
-    baseNome(str)
+
+  const variants = [
+    raw, rawNFC, str,
+    raw.toUpperCase(), raw.toLowerCase(),
+    rawNFC.toUpperCase(), rawNFC.toLowerCase(),
+    nomeComSep(strMapeado, '_'), nomeComSep(strMapeado, '-'),
+    nomeComSep(str, '_'), nomeComSep(str, '-'),
+    baseNome(strMapeado), baseNome(str),
   ]
+
+  return [...new Set(variants.filter(v => v && v.trim()))]
 }
 
 // Encoda segmento de URL com segurança
 const enc = (s) => encodeURIComponent(String(s || ''))
 
-// Candidatos de arquivo para tentar (inclui variações de nome e pastas) e encoding de URL
+// Candidatos de arquivo para tentar - OTIMIZADO com estruturas específicas
 const buildCandidatos = (pessoa) => {
   const nome = pessoa?.nome || ''
   const raw = String(nome).trim().replace(/\s+/g, ' ')
-  const rawNFC = toNFC(raw)
 
-  const nomes = Array.from(new Set([
-    // Normalizados (lower, sem acento)
-    nomeComSep(nome, '_'),
-    nomeComSep(nome, '-'),
-    baseNome(nome),
-    baseNome(nome).replace(/\s+/g, ''),
+  // Variações do nome (reduzidas)
+  const nomes = [
+    raw, // Nome original
+    raw.replace(/\s+/g, '_'), // Com underscores
+    raw.replace(/\s+/g, ' ').split(' ').map(p =>
+      p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
+    ).join(' '), // Title Case
+    raw.toUpperCase() // Maiúsculo
+  ]
 
-    // Title Case a partir do normalizado (sem acento)
-    toTitleCase(nome),
-    toTitleCase(nome).replace(/\s+/g, '_'),
-    toTitleCase(nome).replace(/\s+/g, '-'),
-    toTitleCase(nome).replace(/\s+/g, ''),
-
-    // Title Case preservando acentos do original
-    toTitleCaseRaw(rawNFC),
-    toTitleCaseRaw(rawNFC).replace(/\s+/g, '_'),
-    toTitleCaseRaw(rawNFC).replace(/\s+/g, '-'),
-    toTitleCaseRaw(rawNFC).replace(/\s+/g, ''),
-
-    // Originais (como vieram, preservando acentos)
-    raw,
-    rawNFC,
-    raw.replace(/\s+/g, '_'),
-    raw.replace(/\s+/g, '-'),
-    raw.replace(/\s+/g, ''),
-    rawNFC.replace(/\s+/g, '_'),
-    rawNFC.replace(/\s+/g, '-'),
-    rawNFC.replace(/\s+/g, ''),
-  ]))
-
-  const exts = ['.jpg', '.jpeg', '.png', '.webp', '.JPG', '.JPEG', '.PNG', '.WEBP']
-
-  const cursoDirs = folderVariants(props.curso)
-  const turmaDirs = folderVariants(props.turma)
-
+  const exts = ['.png', '.jpg', '.PNG', '.jpeg']
   const candidatos = []
-  for (const c of cursoDirs) {
-    for (const t of turmaDirs) {
+
+  // Estruturas específicas por curso
+  const cursoId = props.curso
+  // NORMALIZAR TURMA - remover espaços extras que causam problema
+  const turma = String(props.turma || '').replace(/\s+/g, '').trim() // TEEA 2 → TEEA2
+  const base = (import.meta && import.meta.env && import.meta.env.BASE_URL) ? import.meta.env.BASE_URL : './'
+
+  if (cursoId === 'CAI') {
+    // CAI: fotos/CAI/TURMA/NOME.ext
+    for (const ext of exts) {
       for (const n of nomes) {
-        for (const ext of exts) {
-          candidatos.push(`/fotos/${enc(c)}/${enc(t)}/${enc(n)}${ext}`)
-        }
+        candidatos.push(`${base}fotos/CAI/${enc(turma)}/${enc(n)}${ext}`)
       }
     }
   }
+  else if (cursoId === 'SESI_TEC_ADM' || cursoId === 'SESI TÉC ADM') {
+    // ADMINISTRAÇÃO: fotos/TÉCNICO ADMINISTRAÇÃO/TURMA/NOME.ext
+    for (const ext of exts) {
+      for (const n of nomes) {
+        candidatos.push(`${base}fotos/TÉCNICO ADMINISTRAÇÃO/${enc(turma)}/${enc(n)}${ext}`)
+        console.log('o que vem em candidatos',candidatos)
+      }
+    }
+  }
+  else if (cursoId === 'SEDUC_TEC_ELETROMECANICA' || cursoId === 'SEDUC TÉC ELETROMECÂNICA') {
+    // ELETROMECÂNICA: fotos/TÉCNICO ELETROMECÂNICA/TURMA/NOME.ext
+    for (const ext of exts) {
+      for (const n of nomes) {
+        candidatos.push(`${base}fotos/TÉCNICO ELETROMECÂNICA/${enc(turma)}/${enc(n)}${ext}`)
+      }
+    }
+  }
+
   return candidatos
 }
 
@@ -478,24 +556,66 @@ const resolverFoto = (pessoa) => {
   if (!pessoa || !props.curso || !props.turma) return
   const key = getPessoaKey(pessoa)
   if (!key || fotoSrcs.value[key]) return
+
+  console.log(`🔍 Buscando foto: "${pessoa.nome}" | Turma: "${props.turma}" → "${String(props.turma || '').replace(/\s+/g, '').trim()}"`)
+
+  fotoSrcs.value[key] = 'loading'
   const candidatos = buildCandidatos(pessoa)
+
   const tryNext = (i) => {
-    if (i >= candidatos.length) { fotoSrcs.value[key] = ''; return }
+    if (i >= candidatos.length) {
+      console.log(`❌ Foto não encontrada: "${pessoa.nome}"`)
+      fotoSrcs.value[key] = ''
+      return
+    }
+
     const url = candidatos[i]
     const img = new Image()
-    img.onload = () => { fotoSrcs.value[key] = url }
-    img.onerror = () => tryNext(i + 1)
+
+    const timeout = setTimeout(() => {
+      img.onload = null
+      img.onerror = null
+      tryNext(i + 1)
+    }, 1000)
+
+    img.onload = () => {
+      console.log(`✅ Foto encontrada: "${pessoa.nome}" → ${url}`)
+      clearTimeout(timeout)
+      fotoSrcs.value[key] = url
+    }
+
+    img.onerror = () => {
+      clearTimeout(timeout)
+      tryNext(i + 1)
+    }
+
     img.src = url
   }
+
   tryNext(0)
 }
 
 // Retorna uma URL padrão (primeira convenção) caso ainda não resolvido
 const getFoto = (pessoa) => {
   if (pessoa?.foto) return pessoa.foto
-  const nome = nomeComSep(pessoa?.nome || '', '_')
-  if (!nome || !props.curso || !props.turma) return ''
-  return `/fotos/${enc(props.curso)}/${enc(props.turma)}/${enc(nome)}.jpg`
+  if (!pessoa?.nome || !props.curso || !props.turma) return ''
+
+  const cursoId = props.curso
+  // NORMALIZAR TURMA - mesma lógica do buildCandidatos
+  const turma = String(props.turma || '').replace(/\s+/g, '').trim()
+  const nome = pessoa.nome.trim()
+
+  // Usar estruturas específicas por curso
+  const baseURL = (import.meta && import.meta.env && import.meta.env.BASE_URL) ? import.meta.env.BASE_URL : './'
+  if (cursoId === 'CAI') {
+    return `${baseURL}fotos/CAI/${enc(turma)}/${enc(nome)}.png`
+  } else if (cursoId === 'SESI_TEC_ADM' || cursoId === 'SESI TÉC ADM') {
+    return `${baseURL}fotos/TÉCNICO ADMINISTRAÇÃO/${enc(turma)}/${enc(nome)}.png`
+  } else if (cursoId === 'SEDUC_TEC_ELETROMECANICA' || cursoId === 'SEDUC TÉC ELETROMECÂNICA') {
+    return `${baseURL}fotos/TÉCNICO ELETROMECÂNICA/${enc(turma)}/${enc(nome)}.png`
+  }
+
+  return ''
 }
 </script>
 

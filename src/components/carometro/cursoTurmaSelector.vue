@@ -28,10 +28,28 @@
               <div class="text-center py-4">
                 <v-icon size="48" color="grey-lighten-2" class="mb-2">mdi-folder-open</v-icon>
                 <p class="text-body-2 text-medium-emphasis">Nenhum curso encontrado na planilha</p>
+                <v-btn
+                  size="small"
+                  color="warning"
+                  variant="outlined"
+                  @click="mostrarDebugInfo"
+                  class="mt-2"
+                >
+                  Ver Debug Info
+                </v-btn>
               </div>
             </template>
 
             <template v-else>
+              <div class="text-center mb-3">
+                <v-chip
+                  color="success"
+                  size="small"
+                  prepend-icon="mdi-check-circle"
+                >
+                  {{ cursosDisponiveis.length }} cursos encontrados
+                </v-chip>
+              </div>
               <v-list class="pa-0">
                 <v-list-item
                   v-for="curso in cursosDisponiveis"
@@ -215,6 +233,42 @@
         </v-btn>
       </v-col>
     </v-row>
+
+    <!-- Botões de Debug -->
+    <v-row class="mt-4">
+      <v-col cols="12" class="text-center">
+        <v-chip-group>
+          <v-chip
+            color="warning"
+            variant="outlined"
+            size="small"
+            prepend-icon="mdi-refresh"
+            @click="forcarSincronizacao"
+            :loading="carregandoSync"
+          >
+            Forçar Recarregamento
+          </v-chip>
+          <v-chip
+            color="error"
+            variant="outlined"
+            size="small"
+            prepend-icon="mdi-delete"
+            @click="limparTodoCache"
+          >
+            Limpar Cache
+          </v-chip>
+          <v-chip
+            color="info"
+            variant="outlined"
+            size="small"
+            prepend-icon="mdi-information"
+            @click="mostrarDebugInfo"
+          >
+            Debug Info
+          </v-chip>
+        </v-chip-group>
+      </v-col>
+    </v-row>
   </v-container>
 </template>
 
@@ -224,13 +278,14 @@ import { useExcelData } from '@/composables/useExcelData.js'
 
 const emit = defineEmits(['curso-turma-selecionados', 'configurar-excel'])
 
-const { getCursosDisponiveis, getTurmasPorCurso, temDadosPlanilha } = useExcelData()
+const { getCursosDisponiveis, getTurmasPorCurso, temDadosPlanilha, sincronizarPlanilhaConfigurada, limparCache } = useExcelData()
 
 const cursosDisponiveis = ref([])
 const turmasDisponiveis = ref([])
 const cursoSelecionado = ref(null)
 const turmaSelecionada = ref(null)
 const temDadosExcel = ref(false)
+const carregandoSync = ref(false)
 
 const carregarCursos = () => {
   temDadosExcel.value = temDadosPlanilha()
@@ -264,6 +319,51 @@ const confirmarSelecao = () => {
 
 const abrirConfigExcel = () => {
   emit('configurar-excel')
+}
+
+// Funções de debug
+const forcarSincronizacao = async () => {
+  carregandoSync.value = true
+  try {
+    console.log('Forçando sincronização...')
+    const sucesso = await sincronizarPlanilhaConfigurada(true)
+    if (sucesso) {
+      console.log('Sincronização forçada com sucesso')
+      carregarCursos()
+      alert('Dados recarregados com sucesso!')
+    } else {
+      console.warn('Falha na sincronização forçada')
+      alert('Falha ao recarregar dados. Verifique o console.')
+    }
+  } catch (error) {
+    console.error('Erro na sincronização forçada:', error)
+    alert('Erro ao recarregar: ' + error.message)
+  } finally {
+    carregandoSync.value = false
+  }
+}
+
+const limparTodoCache = () => {
+  if (confirm('Tem certeza que deseja limpar todo o cache? Isso removerá todos os dados salvos.')) {
+    limparCache()
+    carregarCursos()
+    alert('Cache limpo! Dados removidos.')
+  }
+}
+
+const mostrarDebugInfo = () => {
+  const dados = {
+    temDadosExcel: temDadosExcel.value,
+    totalCursos: cursosDisponiveis.value.length,
+    cursos: cursosDisponiveis.value.map(c => ({ id: c.id, nome: c.nome, alunos: c.totalAlunos })),
+    localStorage: {
+      carometro_dados_excel: !!localStorage.getItem('carometro_dados_excel'),
+      carometro_excel_timestamp: localStorage.getItem('carometro_excel_timestamp')
+    }
+  }
+
+  console.log('DEBUG INFO:', dados)
+  alert('Debug info no console. Total de cursos: ' + dados.totalCursos)
 }
 
 onMounted(() => {
