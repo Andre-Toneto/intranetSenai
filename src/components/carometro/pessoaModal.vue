@@ -142,13 +142,6 @@
                             {{ ocorrencias.length }} registro{{ ocorrencias.length !== 1 ? 's' : '' }}
                           </template>
                         </v-chip>
-                        <v-btn size="x-small" variant="outlined" color="primary" prepend-icon="mdi-tray-arrow-up" @click="exportarOcorrencias">
-                          Exportar
-                        </v-btn>
-                        <v-btn size="x-small" variant="outlined" color="secondary" prepend-icon="mdi-tray-arrow-down" @click="selecionarArquivoImport">
-                          Importar
-                        </v-btn>
-                        <input ref="fileInputImport" type="file" accept="application/json,.json" style="display:none" @change="handleImport" />
                       </div>
                     </div>
 
@@ -175,16 +168,6 @@
                       <span>
                         Nova <br />Ocorrência
                       </span>
-                      </v-btn>
-                      <v-btn
-                        color="info"
-                        variant="outlined"
-                        size="small"
-                        prepend-icon="mdi-link"
-                        class="ml-3"
-                        @click="configurarWebAppUrl"
-                      >
-                        Conectar Planilha
                       </v-btn>
                     </div>
 
@@ -373,7 +356,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 // Composable para ocorrências
-const { saving, list, add, update, remove, exportToFile, importFromObject, getRemote, setRemote } = useOcorrencias()
+const { saving, list, add, update, remove } = useOcorrencias()
 
 // Estado do modal de ocorrência
 const modalOcorrencia = ref(false)
@@ -516,28 +499,6 @@ const excluirOcorrencia = async (ocorrencia) => {
   }
 }
 
-const fileInputImport = ref(null)
-const exportarOcorrencias = () => {
-  exportToFile()
-}
-const selecionarArquivoImport = () => {
-  fileInputImport.value && fileInputImport.value.click()
-}
-const handleImport = async (e) => {
-  const file = e?.target?.files?.[0]
-  if (!file) return
-  try {
-    const text = await file.text()
-    const json = JSON.parse(text)
-    importFromObject(json)
-    carregarOcorrencias()
-    alert('Ocorrências importadas com sucesso!')
-  } catch (err) {
-    alert('Falha ao importar JSON: ' + (err?.message || err))
-  } finally {
-    if (fileInputImport.value) fileInputImport.value.value = ''
-  }
-}
 
 // Tipos de ocorrência disponíveis
 const tiposOcorrencia = [
@@ -584,15 +545,4 @@ const getCidade = () => {
   return 'Não informado'
 }
 
-const configurarWebAppUrl = () => {
-  const atual = getRemote && getRemote()
-  const url = prompt('Cole a URL do seu Web App (Apps Script):', atual || '')
-  if (!url) return
-  try {
-    setRemote(url)
-    alert('Conectado! As ocorrências serão salvas na planilha.')
-  } catch (e) {
-    alert('URL inválida: ' + (e?.message || e))
-  }
-}
 </script>
