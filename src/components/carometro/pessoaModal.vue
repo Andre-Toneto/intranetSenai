@@ -195,7 +195,7 @@
                                   <div class="d-flex align-center justify-space-between">
                                     <p class="text-caption d-flex align-center">
                                       <v-icon size="12" class="mr-1">mdi-calendar</v-icon>
-                                      {{ new Date(ocorrencia.data || Date.now()).toLocaleDateString('pt-BR') }}
+                                      {{ formatData(ocorrencia.data) }}
                                     </p>
                                     <p class="text-caption d-flex align-center">
                                       <v-icon size="12" class="mr-1">mdi-account</v-icon>
@@ -471,21 +471,21 @@ const salvarOcorrencia = async () => {
     const turmaId = props.turma?.id || props.turma?.nome
 
     if (editandoOcorrencia.value) {
-      // Atualizar ocorrência existente
       await update(cursoId, turmaId, alunoId, editandoOcorrencia.value.id, {
         ...formOcorrencia.value,
-        data: new Date(formOcorrencia.value.data).toISOString()
+        data: `${formOcorrencia.value.data}T00:00:00`
       })
     } else {
-      // Adicionar nova ocorrência
       await add(cursoId, turmaId, alunoId, {
         ...formOcorrencia.value,
-        data: new Date(formOcorrencia.value.data).toISOString()
+        data: `${formOcorrencia.value.data}T00:00:00`
       })
     }
 
-    await carregarOcorrencias()
+    // Fecha o modal imediatamente para sensação de rapidez
     modalOcorrencia.value = false
+    // Atualiza a lista em background
+    carregarOcorrencias()
   } catch (error) {
     console.error('Erro ao salvar ocorrência:', error)
     alert('Erro ao salvar ocorrência: ' + error.message)
@@ -552,6 +552,14 @@ const getCidade = () => {
   }
 
   return 'Não informado'
+}
+
+// Formata data sem deslocamento de fuso quando vier em AAAA-MM-DD/ISO
+const formatData = (valor) => {
+  const s = String(valor || '')
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`
+  try { return new Date(s).toLocaleDateString('pt-BR') } catch { return s }
 }
 
 </script>
