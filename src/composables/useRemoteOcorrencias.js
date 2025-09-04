@@ -45,19 +45,22 @@ export const useRemoteOcorrencias = () => {
       alunoId: String(alunoId || ''),
     })
     const data = await safeFetch('?' + qs.toString())
-    return Array.isArray(data?.items) ? data.items : []
+    if (!data || data.ok === false) return []
+    return Array.isArray(data.items) ? data.items : []
   }
 
   const add = async (cursoId, turmaId, alunoId, ocorrencia) => {
     const payload = { action: 'add', cursoId, turmaId, alunoId, ocorrencia }
     const data = await safeFetch('', { method: 'POST', body: JSON.stringify(payload) })
-    return data?.item || ocorrencia
+    if (!data || data.ok === false) return ocorrencia
+    return data.item || ocorrencia
   }
 
   const update = async (cursoId, turmaId, alunoId, ocorrenciaId, patch) => {
     const payload = { action: 'update', cursoId, turmaId, alunoId, ocorrenciaId, patch }
     const data = await safeFetch('', { method: 'POST', body: JSON.stringify(payload) })
-    return data?.item || null
+    if (!data || data.ok === false) return null
+    return data.item || null
   }
 
   const remove = async (cursoId, turmaId, alunoId, ocorrenciaId) => {
