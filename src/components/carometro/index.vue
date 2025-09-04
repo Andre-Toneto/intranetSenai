@@ -302,12 +302,13 @@ const carregarAlunos = async () => {
 // Função para testar URLs conhecidas
 const testarUrlsConhecidas = () => {
   const turmaNormalizada = String(props.turma || '').replace(/\s+/g, '').trim()
+  const base = (import.meta && import.meta.env && import.meta.env.BASE_URL) ? import.meta.env.BASE_URL : './'
 
   if (props.curso === 'SEDUC_TEC_ELETROMECANICA' && turmaNormalizada === 'TEEA2') {
     const urlsConhecidas = [
-      '/fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Alice Vitória Moreira Silva.png',
-      '/fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Anderson Franco De Jesus.png',
-      '/fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Caio Gabriel Santana Da Silva.png'
+      `${base}fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Alice Vitória Moreira Silva.png`,
+      `${base}fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Anderson Franco De Jesus.png`,
+      `${base}fotos/TÉCNICO ELETROMECÂNICA/TEEA2/Caio Gabriel Santana Da Silva.png`
     ]
 
     console.log(`🧪 TESTANDO URLs CONHECIDAS (turma: "${props.turma}" → "${turmaNormalizada}"):`)
@@ -517,12 +518,13 @@ const buildCandidatos = (pessoa) => {
   const cursoId = props.curso
   // NORMALIZAR TURMA - remover espaços extras que causam problema
   const turma = String(props.turma || '').replace(/\s+/g, '').trim() // TEEA 2 → TEEA2
+  const base = (import.meta && import.meta.env && import.meta.env.BASE_URL) ? import.meta.env.BASE_URL : './'
 
   if (cursoId === 'CAI') {
     // CAI: fotos/CAI/TURMA/NOME.ext
     for (const ext of exts) {
       for (const n of nomes) {
-        candidatos.push(`/fotos/CAI/${enc(turma)}/${enc(n)}${ext}`)
+        candidatos.push(`${base}fotos/CAI/${enc(turma)}/${enc(n)}${ext}`)
       }
     }
   }
@@ -530,7 +532,7 @@ const buildCandidatos = (pessoa) => {
     // ADMINISTRAÇÃO: fotos/TÉCNICO ADMINISTRAÇÃO/TURMA/NOME.ext
     for (const ext of exts) {
       for (const n of nomes) {
-        candidatos.push(`/fotos/TÉCNICO ADMINISTRAÇÃO/${enc(turma)}/${enc(n)}${ext}`)
+        candidatos.push(`${base}fotos/TÉCNICO ADMINISTRAÇÃO/${enc(turma)}/${enc(n)}${ext}`)
         console.log('o que vem em candidatos',candidatos)
       }
     }
@@ -539,7 +541,7 @@ const buildCandidatos = (pessoa) => {
     // ELETROMECÂNICA: fotos/TÉCNICO ELETROMECÂNICA/TURMA/NOME.ext
     for (const ext of exts) {
       for (const n of nomes) {
-        candidatos.push(`/fotos/TÉCNICO ELETROMECÂNICA/${enc(turma)}/${enc(n)}${ext}`)
+        candidatos.push(`${base}fotos/TÉCNICO ELETROMECÂNICA/${enc(turma)}/${enc(n)}${ext}`)
       }
     }
   }
@@ -604,12 +606,13 @@ const getFoto = (pessoa) => {
   const nome = pessoa.nome.trim()
 
   // Usar estruturas específicas por curso
+  const baseURL = (import.meta && import.meta.env && import.meta.env.BASE_URL) ? import.meta.env.BASE_URL : './'
   if (cursoId === 'CAI') {
-    return `/fotos/CAI/${enc(turma)}/${enc(nome)}.png`
+    return `${baseURL}fotos/CAI/${enc(turma)}/${enc(nome)}.png`
   } else if (cursoId === 'SESI_TEC_ADM' || cursoId === 'SESI TÉC ADM') {
-    return `/fotos/TÉCNICO ADMINISTRAÇÃO/${enc(turma)}/${enc(nome)}.png`
+    return `${baseURL}fotos/TÉCNICO ADMINISTRAÇÃO/${enc(turma)}/${enc(nome)}.png`
   } else if (cursoId === 'SEDUC_TEC_ELETROMECANICA' || cursoId === 'SEDUC TÉC ELETROMECÂNICA') {
-    return `/fotos/TÉCNICO ELETROMECÂNICA/${enc(turma)}/${enc(nome)}.png`
+    return `${baseURL}fotos/TÉCNICO ELETROMECÂNICA/${enc(turma)}/${enc(nome)}.png`
   }
 
   return ''
