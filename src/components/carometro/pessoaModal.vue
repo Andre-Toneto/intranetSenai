@@ -133,14 +133,23 @@
                         <v-icon color="error" class="mr-2">mdi-history</v-icon>
                         <h3 class="text-subtitle-1 font-weight-medium">Histórico de Ocorrências</h3>
                       </div>
-                      <v-chip v-if="ocorrencias?.length" size="small" color="error" variant="outlined">
-                        <template v-if="termoPesquisa.trim() && ocorrenciasFiltradas.length !== ocorrencias.length">
-                          {{ ocorrenciasFiltradas.length }} de {{ ocorrencias.length }}
-                        </template>
-                        <template v-else>
-                          {{ ocorrencias.length }} registro{{ ocorrencias.length !== 1 ? 's' : '' }}
-                        </template>
-                      </v-chip>
+                      <div class="d-flex align-center ga-2">
+                        <v-chip v-if="ocorrencias?.length" size="small" color="error" variant="outlined" class="mr-2">
+                          <template v-if="termoPesquisa.trim() && ocorrenciasFiltradas.length !== ocorrencias.length">
+                            {{ ocorrenciasFiltradas.length }} de {{ ocorrencias.length }}
+                          </template>
+                          <template v-else>
+                            {{ ocorrencias.length }} registro{{ ocorrencias.length !== 1 ? 's' : '' }}
+                          </template>
+                        </v-chip>
+                        <v-btn size="x-small" variant="outlined" color="primary" prepend-icon="mdi-tray-arrow-up" @click="exportarOcorrencias">
+                          Exportar
+                        </v-btn>
+                        <v-btn size="x-small" variant="outlined" color="secondary" prepend-icon="mdi-tray-arrow-down" @click="selecionarArquivoImport">
+                          Importar
+                        </v-btn>
+                        <input ref="fileInputImport" type="file" accept="application/json,.json" style="display:none" @change="handleImport" />
+                      </div>
                     </div>
 
                     <!-- Barra de pesquisa e botão para adicionar ocorrência -->
@@ -354,7 +363,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 // Composable para ocorrências
-const { saving, list, add, update, remove } = useOcorrencias()
+const { saving, list, add, update, remove, exportToFile, importFromObject } = useOcorrencias()
 
 // Estado do modal de ocorrência
 const modalOcorrencia = ref(false)
@@ -494,6 +503,29 @@ const excluirOcorrencia = async (ocorrencia) => {
   } catch (error) {
     console.error('Erro ao excluir ocorrência:', error)
     alert('Erro ao excluir ocorrência: ' + error.message)
+  }
+}
+
+const fileInputImport = ref(null)
+const exportarOcorrencias = () => {
+  exportToFile()
+}
+const selecionarArquivoImport = () => {
+  fileInputImport.value && fileInputImport.value.click()
+}
+const handleImport = async (e) => {
+  const file = e?.target?.files?.[0]
+  if (!file) return
+  try {
+    const text = await file.text()
+    const json = JSON.parse(text)
+    importFromObject(json)
+    carregarOcorrencias()
+    alert('Ocorrências importadas com sucesso!')
+  } catch (err) {
+    alert('Falha ao importar JSON: ' + (err?.message || err))
+  } finally {
+    if (fileInputImport.value) fileInputImport.value.value = ''
   }
 }
 
