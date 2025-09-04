@@ -176,6 +176,16 @@
                         Nova <br />Ocorrência
                       </span>
                       </v-btn>
+                      <v-btn
+                        color="info"
+                        variant="outlined"
+                        size="small"
+                        prepend-icon="mdi-link"
+                        class="ml-3"
+                        @click="configurarWebAppUrl"
+                      >
+                        Conectar Planilha
+                      </v-btn>
                     </div>
 
                     <!-- Lista com scroll fixo -->
