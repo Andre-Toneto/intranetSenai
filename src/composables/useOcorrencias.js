@@ -1,46 +1,86 @@
 import { ref } from 'vue'
 import { useExcelData } from '@/composables/useExcelData.js'
-import { useCarometro } from '@/composables/useCarometro.js'
 
 export const useOcorrencias = () => {
-  const { carregarDadosProcessados, salvarDadosProcessados, temDadosPlanilha } = useExcelData()
-  const { getAlunosTurma, saveAlunosTurma } = useCarometro()
+  const { carregarDadosProcessados, temDadosPlanilha } = useExcelData()
   const saving = ref(false)
 
-  const normalizeArray = (arr) => Array.isArray(arr) ? arr : []
+  const STORAGE_KEY = 'carometro_ocorrencias_store'
+  const store = ref({ version: 1, updatedAt: null, registros: {} })
+  const loaded = ref(false)
 
+  const normalizeArray = (arr) => Array.isArray(arr) ? arr : []
   const genId = () => `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 
-  const findAlunoExcel = (cursoId, turmaId, alunoId) => {
-    const dados = carregarDadosProcessados()
-    if (!dados || !cursoId || !turmaId || !alunoId) return { dados: null, aluno: null, turma: null }
-    const curso = dados.cursos?.[cursoId]
-    const turma = curso?.turmas?.[turmaId]
-    if (!turma) return { dados, aluno: null, turma: null }
-    const idx = turma.alunos.findIndex(a => a.id === alunoId || a.matricula === alunoId)
-    const aluno = idx >= 0 ? turma.alunos[idx] : null
-    return { dados, aluno, turma, idx }
+  const ensureLoaded = async () => {
+    if (loaded.value) return
+    try {
+      const cached = localStorage.getItem(STORAGE_KEY)
+      if (cached) {
+        store.value = JSON.parse(cached)
+        loaded.value = true
+        return
+      }
+      const resp = await fetch('/data/ocorrencias.json', { cache: 'no-store' })
+      if (resp.ok) {
+        const json = await resp.json()
+        store.value = json && json.registros ? json : { version: 1, updatedAt: null, registros: {} }
+      }
+    } catch (e) {
+      // fallback silently
+      store.value = { version: 1, updatedAt: null, registros: {} }
+    } finally {
+      loaded.value = true
+      persist()
+    }
   }
 
-  const findAlunoFallback = (turmaId, alunoId) => {
-    const alunos = getAlunosTurma(turmaId)
-    const idx = alunos.findIndex(a => a.id === alunoId || a.matricula === alunoId)
-    const aluno = idx >= 0 ? alunos[idx] : null
-    return { alunos, aluno, idx }
+  const persist = () => {
+    try {
+      store.value.updatedAt = new Date().toISOString()
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store.value))
+    } catch {}
+  }
+
+  const getPath = (cursoId, turmaId, alunoId) => {
+    const c = String(cursoId || '').trim()
+    const t = String(turmaId || '').trim()
+    const a = String(alunoId || '').trim()
+    if (!c || !t || !a) return null
+    if (!store.value.registros[c]) store.value.registros[c] = {}
+    if (!store.value.registros[c][t]) store.value.registros[c][t] = {}
+    if (!store.value.registros[c][t][a]) store.value.registros[c][t][a] = []
+    return store.value.registros[c][t][a]
+  }
+
+  const importLegacyIfNeeded = (cursoId, turmaId, alunoId) => {
+    // Importa ocorrências embutidas no aluno da planilha (legado) apenas uma vez
+    if (!temDadosPlanilha()) return
+    try {
+      const dados = carregarDadosProcessados()
+      const aluno = dados?.cursos?.[cursoId]?.turmas?.[turmaId]?.alunos?.find(
+        a => a.id === alunoId || a.matricula === alunoId
+      )
+      const atuais = getPath(cursoId, turmaId, alunoId)
+      if (aluno && Array.isArray(aluno.ocorrencias) && atuais.length === 0 && aluno.ocorrencias.length > 0) {
+        aluno.ocorrencias.forEach(o => atuais.push(o))
+        persist()
+      }
+    } catch {}
   }
 
   const list = (cursoId, turmaId, alunoId) => {
-    if (temDadosPlanilha() && cursoId) {
-      const { aluno } = findAlunoExcel(cursoId, turmaId, alunoId)
-      return normalizeArray(aluno?.ocorrencias)
-    }
-    const { aluno } = findAlunoFallback(turmaId, alunoId)
-    return normalizeArray(aluno?.ocorrencias)
+    // ensureLoaded é async; chamadas de UI iniciam cedo. Não bloquear; iniciar carregamento em background.
+    ensureLoaded()
+    const arr = getPath(cursoId, turmaId, alunoId) || []
+    if (arr.length === 0) importLegacyIfNeeded(cursoId, turmaId, alunoId)
+    return [...(getPath(cursoId, turmaId, alunoId) || [])]
   }
 
   const add = async (cursoId, turmaId, alunoId, payload) => {
     saving.value = true
     try {
+      await ensureLoaded()
       const nova = {
         id: genId(),
         tipo: (payload?.tipo || 'Outro'),
@@ -48,23 +88,10 @@ export const useOcorrencias = () => {
         data: payload?.data || new Date().toISOString(),
         autor: payload?.autor || 'Administrador'
       }
-
-      if (temDadosPlanilha() && cursoId) {
-        const { dados, aluno } = findAlunoExcel(cursoId, turmaId, alunoId)
-        if (!dados || !aluno) throw new Error('Aluno não encontrado')
-        aluno.ocorrencias = normalizeArray(aluno.ocorrencias)
-        aluno.ocorrencias.unshift(nova)
-        if (!salvarDadosProcessados(dados)) throw new Error('Falha ao salvar dados')
-        return nova
-      } else {
-        const { alunos, aluno, idx } = findAlunoFallback(turmaId, alunoId)
-        if (!aluno) throw new Error('Aluno não encontrado')
-        aluno.ocorrencias = normalizeArray(aluno.ocorrencias)
-        aluno.ocorrencias.unshift(nova)
-        alunos[idx] = aluno
-        if (!saveAlunosTurma(turmaId, alunos)) throw new Error('Falha ao salvar dados')
-        return nova
-      }
+      const arr = getPath(cursoId, turmaId, alunoId)
+      arr.unshift(nova)
+      persist()
+      return nova
     } finally {
       saving.value = false
     }
@@ -73,26 +100,13 @@ export const useOcorrencias = () => {
   const update = async (cursoId, turmaId, alunoId, ocorrenciaId, patch) => {
     saving.value = true
     try {
-      if (temDadosPlanilha() && cursoId) {
-        const { dados, aluno } = findAlunoExcel(cursoId, turmaId, alunoId)
-        if (!dados || !aluno) throw new Error('Aluno não encontrado')
-        aluno.ocorrencias = normalizeArray(aluno.ocorrencias)
-        const i = aluno.ocorrencias.findIndex(o => o.id === ocorrenciaId)
-        if (i === -1) throw new Error('Ocorrência não encontrada')
-        aluno.ocorrencias[i] = { ...aluno.ocorrencias[i], ...patch }
-        if (!salvarDadosProcessados(dados)) throw new Error('Falha ao salvar dados')
-        return aluno.ocorrencias[i]
-      } else {
-        const { alunos, aluno, idx } = findAlunoFallback(turmaId, alunoId)
-        if (!aluno) throw new Error('Aluno não encontrado')
-        aluno.ocorrencias = normalizeArray(aluno.ocorrencias)
-        const i = aluno.ocorrencias.findIndex(o => o.id === ocorrenciaId)
-        if (i === -1) throw new Error('Ocorrência não encontrada')
-        aluno.ocorrencias[i] = { ...aluno.ocorrencias[i], ...patch }
-        alunos[idx] = aluno
-        if (!saveAlunosTurma(turmaId, alunos)) throw new Error('Falha ao salvar dados')
-        return aluno.ocorrencias[i]
-      }
+      await ensureLoaded()
+      const arr = getPath(cursoId, turmaId, alunoId)
+      const i = arr.findIndex(o => o.id === ocorrenciaId)
+      if (i === -1) throw new Error('Ocorrência não encontrada')
+      arr[i] = { ...arr[i], ...patch }
+      persist()
+      return arr[i]
     } finally {
       saving.value = false
     }
@@ -101,28 +115,36 @@ export const useOcorrencias = () => {
   const remove = async (cursoId, turmaId, alunoId, ocorrenciaId) => {
     saving.value = true
     try {
-      if (temDadosPlanilha() && cursoId) {
-        const { dados, aluno } = findAlunoExcel(cursoId, turmaId, alunoId)
-        if (!dados || !aluno) throw new Error('Aluno não encontrado')
-        aluno.ocorrencias = normalizeArray(aluno.ocorrencias)
-        const nova = aluno.ocorrencias.filter(o => o.id !== ocorrenciaId)
-        aluno.ocorrencias = nova
-        if (!salvarDadosProcessados(dados)) throw new Error('Falha ao salvar dados')
-        return true
-      } else {
-        const { alunos, aluno, idx } = findAlunoFallback(turmaId, alunoId)
-        if (!aluno) throw new Error('Aluno não encontrado')
-        aluno.ocorrencias = normalizeArray(aluno.ocorrencias)
-        const nova = aluno.ocorrencias.filter(o => o.id !== ocorrenciaId)
-        aluno.ocorrencias = nova
-        alunos[idx] = aluno
-        if (!saveAlunosTurma(turmaId, alunos)) throw new Error('Falha ao salvar dados')
-        return true
-      }
+      await ensureLoaded()
+      const arr = getPath(cursoId, turmaId, alunoId)
+      const nova = arr.filter(o => o.id !== ocorrenciaId)
+      store.value.registros[cursoId][turmaId][alunoId] = nova
+      persist()
+      return true
     } finally {
       saving.value = false
     }
   }
 
-  return { saving, list, add, update, remove }
+  const exportToFile = () => {
+    const dataStr = JSON.stringify(store.value, null, 2)
+    const blob = new Blob([dataStr], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'ocorrencias.json'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const importFromObject = (obj) => {
+    if (!obj || typeof obj !== 'object') throw new Error('Arquivo inválido')
+    const registros = obj.registros && typeof obj.registros === 'object' ? obj.registros : {}
+    store.value = { version: 1, updatedAt: new Date().toISOString(), registros }
+    persist()
+  }
+
+  return { saving, list, add, update, remove, exportToFile, importFromObject }
 }
