@@ -418,8 +418,9 @@ const carregarOcorrencias = async () => {
   if (!props.pessoa?.matricula && !props.pessoa?.nome) return
 
   const alunoId = alunoKey()
-  const cursoId = props.curso?.id
-  const turmaId = props.turma?.id || props.turma?.nome
+  const cursoId = props.curso?.id || props.curso
+  const turmaId = props.turma?.id || props.turma?.nome || props.turma
+  if (!cursoId || !turmaId || !alunoId) return
 
   ocorrencias.value = list(cursoId, turmaId, alunoId)
   filtrarOcorrencias()
@@ -495,8 +496,12 @@ const salvarOcorrencia = async () => {
 
   try {
     const alunoId = alunoKey()
-    const cursoId = props.curso?.id
-    const turmaId = props.turma?.id || props.turma?.nome
+    const cursoId = props.curso?.id || props.curso
+    const turmaId = props.turma?.id || props.turma?.nome || props.turma
+
+    if (!cursoId || !turmaId || !alunoId) {
+      throw new Error('Curso, Turma e Aluno são obrigatórios')
+    }
 
     if (editandoOcorrencia.value) {
       await update(cursoId, turmaId, alunoId, editandoOcorrencia.value.id, {
@@ -533,8 +538,9 @@ const confirmarExclusao = async () => {
   if (!toDelete.value) { confirmDelete.value = false; return }
   try {
     const alunoId = alunoKey()
-    const cursoId = props.curso?.id
-    const turmaId = props.turma?.id || props.turma?.nome
+    const cursoId = props.curso?.id || props.curso
+    const turmaId = props.turma?.id || props.turma?.nome || props.turma
+    if (!cursoId || !turmaId || !alunoId) throw new Error('Curso, Turma e Aluno são obrigatórios')
     await remove(cursoId, turmaId, alunoId, toDelete.value.id)
     confirmDelete.value = false
     toDelete.value = null
