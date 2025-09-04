@@ -20,14 +20,21 @@ export const useRemoteOcorrencias = () => {
   const isConfigured = () => true
 
   const safeFetch = async (path = '', options = {}) => {
-    const base = getUrl()
-    if (!base) throw new Error('Web App não configurado')
-    const url = base.replace(/\/$/, '') + path
-    const isPost = (options?.method || 'GET').toUpperCase() === 'POST'
-    const headers = isPost ? { 'Content-Type': 'text/plain;charset=utf-8' } : {}
-    const res = await fetch(url, { headers, ...options })
-    if (!res.ok) throw new Error(`Falha na requisição: ${res.status}`)
-    return res.json()
+    try {
+      const base = getUrl()
+      if (!base) return { ok: false }
+      const url = base.replace(/\/$/, '') + path
+      const isPost = (options?.method || 'GET').toUpperCase() === 'POST'
+      const headers = isPost ? { 'Content-Type': 'text/plain;charset=utf-8' } : {}
+      const controller = new AbortController()
+      const id = setTimeout(() => controller.abort(), 8000)
+      const res = await fetch(url, { headers, signal: controller.signal, ...options })
+      clearTimeout(id)
+      if (!res.ok) return { ok: false, status: res.status }
+      return await res.json()
+    } catch (e) {
+      return { ok: false, error: String(e && e.message ? e.message : e) }
+    }
   }
 
   const list = async (cursoId, turmaId, alunoId) => {
