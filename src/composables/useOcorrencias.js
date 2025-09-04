@@ -73,20 +73,24 @@ export const useOcorrencias = () => {
 
   const list = (cursoId, turmaId, alunoId) => {
     ensureLoaded()
-    if (remoteReady()) {
-      // retorno assíncrono: também manter local em paralelo
-      rList(cursoId, turmaId, alunoId).then(items => {
-        const arr = getPath(cursoId, turmaId, alunoId)
-        // mesclar: remoto vence pelo id
-        const map = new Map(arr.map(o => [o.id, o]))
-        items.forEach(o => map.set(o.id, o))
-        store.value.registros[cursoId][turmaId][alunoId] = Array.from(map.values())
-        persist()
-      }).catch(() => {})
-    }
     const arr = getPath(cursoId, turmaId, alunoId) || []
     if (arr.length === 0) importLegacyIfNeeded(cursoId, turmaId, alunoId)
     return [...(getPath(cursoId, turmaId, alunoId) || [])]
+  }
+
+  const refreshFromRemote = async (cursoId, turmaId, alunoId) => {
+    if (!remoteReady()) return list(cursoId, turmaId, alunoId)
+    try {
+      const items = await rList(cursoId, turmaId, alunoId)
+      const current = getPath(cursoId, turmaId, alunoId)
+      const map = new Map(current.map(o => [o.id, o]))
+      items.forEach(o => map.set(o.id, o))
+      store.value.registros[cursoId][turmaId][alunoId] = Array.from(map.values())
+      persist()
+      return list(cursoId, turmaId, alunoId)
+    } catch {
+      return list(cursoId, turmaId, alunoId)
+    }
   }
 
   const add = async (cursoId, turmaId, alunoId, payload) => {
@@ -175,5 +179,5 @@ export const useOcorrencias = () => {
   const getRemote = () => getRemoteUrl()
   const setRemote = (url) => setRemoteUrl(url)
 
-  return { saving, list, add, update, remove, exportToFile, importFromObject, getRemote, setRemote }
+  return { saving, list, add, update, remove, exportToFile, importFromObject, getRemote, setRemote, refreshFromRemote }
 }
