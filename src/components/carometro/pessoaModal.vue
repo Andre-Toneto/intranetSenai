@@ -218,7 +218,7 @@
                                   size="x-small"
                                   variant="text"
                                   color="error"
-                                  @click="excluirOcorrencia(ocorrencia)"
+                                  @click="abrirConfirmacaoExclusao(ocorrencia)"
                                 />
                               </div>
                             </div>
@@ -257,6 +257,33 @@
           Voltar
         </v-btn>
         <v-spacer />
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
+  <!-- Confirmação de Exclusão -->
+  <v-dialog v-model="confirmDelete" max-width="420">
+    <v-card>
+      <v-card-title class="text-h6 d-flex align-center"><v-icon class="mr-2" color="error">mdi-trash-can</v-icon>Confirmar exclusão</v-card-title>
+      <v-card-text>
+        Tem certeza que deseja excluir esta ocorrência?
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="outlined" @click="confirmDelete = false">Cancelar</v-btn>
+        <v-btn color="error" @click="confirmarExclusao">Excluir</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
+  <!-- Alerta/Erro -->
+  <v-dialog v-model="errorDialog" max-width="440">
+    <v-card>
+      <v-card-title class="text-h6 d-flex align-center"><v-icon class="mr-2" color="warning">mdi-alert</v-icon>Atenção</v-card-title>
+      <v-card-text>{{ errorMessage }}</v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn color="primary" @click="errorDialog = false">Ok</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -461,7 +488,8 @@ const abrirModalOcorrencia = (ocorrencia = null) => {
 
 const salvarOcorrencia = async () => {
   if (!formOcorrencia.value.descricao.trim() || !formOcorrencia.value.autor.trim()) {
-    alert('Descrição e professor são obrigatórios!')
+    errorMessage.value = 'Preencha os campos obrigatórios: Descrição e Professor/Responsável.'
+    errorDialog.value = true
     return
   }
 
@@ -488,23 +516,33 @@ const salvarOcorrencia = async () => {
     carregarOcorrencias()
   } catch (error) {
     console.error('Erro ao salvar ocorrência:', error)
-    alert('Erro ao salvar ocorrência: ' + error.message)
+    errorMessage.value = 'Erro ao salvar ocorrência: ' + (error?.message || 'Desconhecido')
+    errorDialog.value = true
   }
 }
 
-const excluirOcorrencia = async (ocorrencia) => {
-  if (!confirm('Tem certeza que deseja excluir esta ocorrência?')) return
+const confirmDelete = ref(false)
+const toDelete = ref(null)
 
+const abrirConfirmacaoExclusao = (oc) => {
+  toDelete.value = oc
+  confirmDelete.value = true
+}
+
+const confirmarExclusao = async () => {
+  if (!toDelete.value) { confirmDelete.value = false; return }
   try {
     const alunoId = alunoKey()
     const cursoId = props.curso?.id
     const turmaId = props.turma?.id || props.turma?.nome
-
-    await remove(cursoId, turmaId, alunoId, ocorrencia.id)
+    await remove(cursoId, turmaId, alunoId, toDelete.value.id)
+    confirmDelete.value = false
+    toDelete.value = null
     await carregarOcorrencias()
   } catch (error) {
     console.error('Erro ao excluir ocorrência:', error)
-    alert('Erro ao excluir ocorrência: ' + error.message)
+    errorMessage.value = 'Erro ao excluir ocorrência: ' + (error?.message || 'Desconhecido')
+    errorDialog.value = true
   }
 }
 
@@ -561,5 +599,9 @@ const formatData = (valor) => {
   if (m) return `${m[3]}/${m[2]}/${m[1]}`
   try { return new Date(s).toLocaleDateString('pt-BR') } catch { return s }
 }
+
+// Dialogs
+const errorDialog = ref(false)
+const errorMessage = ref('')
 
 </script>
