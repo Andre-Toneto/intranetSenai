@@ -8,7 +8,7 @@ export const useOcorrencias = () => {
   const saving = ref(false)
 
   const STORAGE_KEY = 'carometro_ocorrencias_store'
-  const store = ref({ version: 1, updatedAt: null, registros: {} })
+  const store = ref({ version: 1, updatedAt: null, registros: {}, tombstones: {} })
   const loaded = ref(false)
 
   const normalizeArray = (arr) => Array.isArray(arr) ? arr : []
@@ -19,7 +19,8 @@ export const useOcorrencias = () => {
     try {
       const cached = localStorage.getItem(STORAGE_KEY)
       if (cached) {
-        store.value = JSON.parse(cached)
+        const parsed = JSON.parse(cached)
+        store.value = { tombstones: {}, ...parsed, registros: parsed.registros || {}, tombstones: parsed.tombstones || {} }
         loaded.value = true
         return
       }
@@ -55,6 +56,17 @@ export const useOcorrencias = () => {
     return store.value.registros[c][t][a]
   }
 
+  const getTombs = (cursoId, turmaId, alunoId) => {
+    const c = String(cursoId || '').trim()
+    const t = String(turmaId || '').trim()
+    const a = String(alunoId || '').trim()
+    if (!c || !t || !a) return null
+    if (!store.value.tombstones[c]) store.value.tombstones[c] = {}
+    if (!store.value.tombstones[c][t]) store.value.tombstones[c][t] = {}
+    if (!store.value.tombstones[c][t][a]) store.value.tombstones[c][t][a] = {}
+    return store.value.tombstones[c][t][a]
+  }
+
   const importLegacyIfNeeded = (cursoId, turmaId, alunoId) => {
     // Importa ocorrências embutidas no aluno da planilha (legado) apenas uma vez
     if (!temDadosPlanilha()) return
@@ -83,9 +95,11 @@ export const useOcorrencias = () => {
     try {
       const items = await rList(cursoId, turmaId, alunoId)
       const current = getPath(cursoId, turmaId, alunoId)
+      const tombs = getTombs(cursoId, turmaId, alunoId)
       const map = new Map(current.map(o => [o.id, o]))
       items.forEach(o => map.set(o.id, o))
-      store.value.registros[cursoId][turmaId][alunoId] = Array.from(map.values())
+      const merged = Array.from(map.values()).filter(o => !tombs[o.id])
+      store.value.registros[cursoId][turmaId][alunoId] = merged
       persist()
       return list(cursoId, turmaId, alunoId)
     } catch {
@@ -105,15 +119,16 @@ export const useOcorrencias = () => {
         autor: payload?.autor || 'Administrador'
       }
       const arr = getPath(cursoId, turmaId, alunoId)
+      const tombs = getTombs(cursoId, turmaId, alunoId)
+      delete tombs[nova.id]
       arr.unshift(nova)
       persist()
       if (remoteReady()) {
         rAdd(cursoId, turmaId, alunoId, nova).then(remoteItem => {
-          // atualizar com retorno do backend (caso altere algo)
           const idx = arr.findIndex(o => o.id === nova.id)
           if (idx >= 0) arr[idx] = { ...arr[idx], ...remoteItem }
           persist()
-        }).catch(() => {/* mantém local se falhar */})
+        }).catch(() => {})
       }
       return nova
     } finally {
@@ -144,8 +159,10 @@ export const useOcorrencias = () => {
     try {
       await ensureLoaded()
       const arr = getPath(cursoId, turmaId, alunoId)
+      const tombs = getTombs(cursoId, turmaId, alunoId)
       const nova = arr.filter(o => o.id !== ocorrenciaId)
       store.value.registros[cursoId][turmaId][alunoId] = nova
+      tombs[ocorrenciaId] = true
       persist()
       if (remoteReady()) {
         rRemove(cursoId, turmaId, alunoId, ocorrenciaId).catch(() => {})
