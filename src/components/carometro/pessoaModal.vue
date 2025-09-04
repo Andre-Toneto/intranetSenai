@@ -373,7 +373,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 // Composable para ocorrências
-const { saving, list, add, update, remove, exportToFile, importFromObject } = useOcorrencias()
+const { saving, list, add, update, remove, exportToFile, importFromObject, getRemote, setRemote } = useOcorrencias()
 
 // Estado do modal de ocorrência
 const modalOcorrencia = ref(false)
