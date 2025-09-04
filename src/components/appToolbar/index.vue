@@ -77,7 +77,7 @@ const formattedDate = computed(() => {
 })
 
 const menuItems = [
-  { text: 'INTRANET', icon: 'mdi-web', link: 'https://sesisenaisp.sharepoint.com/sites/intranet/SitePages/Home.aspx' },
+  { text: 'INTRANET', icon: 'mdi-web', link: 'http://intranet568.sp.senai.br/' },
   { text: 'PORTAL EDU', icon: 'mdi-school', link: 'https://pess.sesisenaispedu.org.br/' },
   { text: 'RH SAP', icon: 'mdi-account-group', link: 'https://portalrh.sesisenaisp.org.br/arte/' },
   { text: 'GED', icon: 'mdi-file-document', link: 'https://sesisenaisp.sharepoint.com/sites/NovaGED' },

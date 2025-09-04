@@ -133,14 +133,16 @@
                         <v-icon color="error" class="mr-2">mdi-history</v-icon>
                         <h3 class="text-subtitle-1 font-weight-medium">Histórico de Ocorrências</h3>
                       </div>
-                      <v-chip v-if="ocorrencias?.length" size="small" color="error" variant="outlined">
-                        <template v-if="termoPesquisa.trim() && ocorrenciasFiltradas.length !== ocorrencias.length">
-                          {{ ocorrenciasFiltradas.length }} de {{ ocorrencias.length }}
-                        </template>
-                        <template v-else>
-                          {{ ocorrencias.length }} registro{{ ocorrencias.length !== 1 ? 's' : '' }}
-                        </template>
-                      </v-chip>
+                      <div class="d-flex align-center ga-2">
+                        <v-chip v-if="ocorrencias?.length" size="small" color="error" variant="outlined" class="mr-2">
+                          <template v-if="termoPesquisa.trim() && ocorrenciasFiltradas.length !== ocorrencias.length">
+                            {{ ocorrenciasFiltradas.length }} de {{ ocorrencias.length }}
+                          </template>
+                          <template v-else>
+                            {{ ocorrencias.length }} registro{{ ocorrencias.length !== 1 ? 's' : '' }}
+                          </template>
+                        </v-chip>
+                      </div>
                     </div>
 
                     <!-- Barra de pesquisa e botão para adicionar ocorrência -->
@@ -497,6 +499,7 @@ const excluirOcorrencia = async (ocorrencia) => {
   }
 }
 
+
 // Tipos de ocorrência disponíveis
 const tiposOcorrencia = [
   'Disciplinar',
@@ -530,7 +533,7 @@ const getEndereco = () => {
 const getCidade = () => {
   const cidade = props.pessoa.cidade || ''
   const estado = props.pessoa.estado || ''
-  
+
   if (cidade && estado) {
     return `${cidade} - ${estado}`
   } else if (cidade) {
@@ -538,7 +541,8 @@ const getCidade = () => {
   } else if (estado) {
     return estado
   }
-  
+
   return 'Não informado'
 }
+
 </script>
