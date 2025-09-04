@@ -356,7 +356,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 // Composable para ocorrências
-const { saving, list, add, update, remove } = useOcorrencias()
+const { saving, list, add, update, remove, refreshFromRemote } = useOcorrencias()
 
 // Estado do modal de ocorrência
 const modalOcorrencia = ref(false)
@@ -381,7 +381,7 @@ watch(() => props.pessoa, (novaPessoa) => {
 }, { immediate: true })
 
 // Funções para gerenciar ocorrências
-const carregarOcorrencias = () => {
+const carregarOcorrencias = async () => {
   if (!props.pessoa?.id && !props.pessoa?.matricula) return
 
   const alunoId = props.pessoa.id || props.pessoa.matricula
@@ -389,6 +389,10 @@ const carregarOcorrencias = () => {
   const turmaId = props.turma?.id || props.turma?.nome
 
   ocorrencias.value = list(cursoId, turmaId, alunoId)
+  filtrarOcorrencias()
+  // Atualizar da planilha remotamente e refletir no modal
+  const atualizadas = await refreshFromRemote(cursoId, turmaId, alunoId)
+  ocorrencias.value = atualizadas
   filtrarOcorrencias()
 }
 
@@ -475,7 +479,7 @@ const salvarOcorrencia = async () => {
       })
     }
 
-    carregarOcorrencias()
+    await carregarOcorrencias()
     modalOcorrencia.value = false
   } catch (error) {
     console.error('Erro ao salvar ocorrência:', error)
@@ -492,7 +496,7 @@ const excluirOcorrencia = async (ocorrencia) => {
     const turmaId = props.turma?.id || props.turma?.nome
 
     await remove(cursoId, turmaId, alunoId, ocorrencia.id)
-    carregarOcorrencias()
+    await carregarOcorrencias()
   } catch (error) {
     console.error('Erro ao excluir ocorrência:', error)
     alert('Erro ao excluir ocorrência: ' + error.message)
