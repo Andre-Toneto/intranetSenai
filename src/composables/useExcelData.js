@@ -277,10 +277,10 @@ export const useExcelData = () => {
   // Função para obter alunos por curso e turma
   const getAlunosPorCursoTurma = (cursoId, turmaId) => {
     const dados = carregarDadosProcessados()
-    if (!dados || !dados.cursos[cursoId] || !dados.cursos[cursoId].turmas[turmaId]) {
+    if (!dados || !dados.cursos || !dados.cursos[cursoId] || !dados.cursos[cursoId].turmas || !dados.cursos[cursoId].turmas[turmaId]) {
       return []
     }
-    
+
     return dados.cursos[cursoId].turmas[turmaId].alunos || []
   }
 
