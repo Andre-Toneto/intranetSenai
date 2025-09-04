@@ -28,11 +28,17 @@ export const useOcorrencias = () => {
       const resp = await fetch(`${base}data/ocorrencias.json`, { cache: 'no-store' })
       if (resp.ok) {
         const json = await resp.json()
-        store.value = json && json.registros ? json : { version: 1, updatedAt: null, registros: {} }
+        const base = json && typeof json === 'object' ? json : {}
+        store.value = {
+          version: 1,
+          updatedAt: base.updatedAt || null,
+          registros: base.registros || {},
+          tombstones: base.tombstones || {}
+        }
       }
     } catch (e) {
       // fallback silently
-      store.value = { version: 1, updatedAt: null, registros: {} }
+      store.value = { version: 1, updatedAt: null, registros: {}, tombstones: {} }
     } finally {
       loaded.value = true
       persist()
@@ -51,6 +57,8 @@ export const useOcorrencias = () => {
     const t = String(turmaId || '').trim()
     const a = String(alunoId || '').trim()
     if (!c || !t || !a) return null
+    if (!store.value || typeof store.value !== 'object') store.value = { version: 1, updatedAt: null, registros: {}, tombstones: {} }
+    if (!store.value.registros || typeof store.value.registros !== 'object') store.value.registros = {}
     if (!store.value.registros[c]) store.value.registros[c] = {}
     if (!store.value.registros[c][t]) store.value.registros[c][t] = {}
     if (!store.value.registros[c][t][a]) store.value.registros[c][t][a] = []
@@ -62,6 +70,8 @@ export const useOcorrencias = () => {
     const t = String(turmaId || '').trim()
     const a = String(alunoId || '').trim()
     if (!c || !t || !a) return null
+    if (!store.value || typeof store.value !== 'object') store.value = { version: 1, updatedAt: null, registros: {}, tombstones: {} }
+    if (!store.value.tombstones || typeof store.value.tombstones !== 'object') store.value.tombstones = {}
     if (!store.value.tombstones[c]) store.value.tombstones[c] = {}
     if (!store.value.tombstones[c][t]) store.value.tombstones[c][t] = {}
     if (!store.value.tombstones[c][t][a]) store.value.tombstones[c][t][a] = {}
@@ -197,7 +207,8 @@ export const useOcorrencias = () => {
   const importFromObject = (obj) => {
     if (!obj || typeof obj !== 'object') throw new Error('Arquivo inválido')
     const registros = obj.registros && typeof obj.registros === 'object' ? obj.registros : {}
-    store.value = { version: 1, updatedAt: new Date().toISOString(), registros }
+    const tombstones = obj.tombstones && typeof obj.tombstones === 'object' ? obj.tombstones : {}
+    store.value = { version: 1, updatedAt: new Date().toISOString(), registros, tombstones }
     persist()
   }
 
