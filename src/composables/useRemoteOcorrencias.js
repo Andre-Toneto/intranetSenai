@@ -21,10 +21,9 @@ export const useRemoteOcorrencias = () => {
     const base = getUrl()
     if (!base) throw new Error('Web App não configurado')
     const url = base.replace(/\/$/, '') + path
-    const res = await fetch(url, {
-      headers: { 'Content-Type': 'application/json' },
-      ...options,
-    })
+    const isPost = (options?.method || 'GET').toUpperCase() === 'POST'
+    const headers = isPost ? { 'Content-Type': 'text/plain;charset=utf-8' } : {}
+    const res = await fetch(url, { headers, ...options })
     if (!res.ok) throw new Error(`Falha na requisição: ${res.status}`)
     return res.json()
   }
