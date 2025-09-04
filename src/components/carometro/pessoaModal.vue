@@ -381,16 +381,21 @@ watch(() => props.pessoa, (novaPessoa) => {
 }, { immediate: true })
 
 // Funções para gerenciar ocorrências
-const carregarOcorrencias = async () => {
-  if (!props.pessoa?.id && !props.pessoa?.matricula) return
+const alunoKey = () => {
+  if (props.pessoa?.matricula) return String(props.pessoa.matricula)
+  const nome = String(props.pessoa?.nome || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  return nome
+}
 
-  const alunoId = props.pessoa.id || props.pessoa.matricula
+const carregarOcorrencias = async () => {
+  if (!props.pessoa?.matricula && !props.pessoa?.nome) return
+
+  const alunoId = alunoKey()
   const cursoId = props.curso?.id
   const turmaId = props.turma?.id || props.turma?.nome
 
   ocorrencias.value = list(cursoId, turmaId, alunoId)
   filtrarOcorrencias()
-  // Atualizar da planilha remotamente e refletir no modal
   const atualizadas = await refreshFromRemote(cursoId, turmaId, alunoId)
   ocorrencias.value = atualizadas
   filtrarOcorrencias()
@@ -461,7 +466,7 @@ const salvarOcorrencia = async () => {
   }
 
   try {
-    const alunoId = props.pessoa.id || props.pessoa.matricula
+    const alunoId = alunoKey()
     const cursoId = props.curso?.id
     const turmaId = props.turma?.id || props.turma?.nome
 
@@ -491,7 +496,7 @@ const excluirOcorrencia = async (ocorrencia) => {
   if (!confirm('Tem certeza que deseja excluir esta ocorrência?')) return
 
   try {
-    const alunoId = props.pessoa.id || props.pessoa.matricula
+    const alunoId = alunoKey()
     const cursoId = props.curso?.id
     const turmaId = props.turma?.id || props.turma?.nome
 
