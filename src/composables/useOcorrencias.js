@@ -1,8 +1,10 @@
 import { ref } from 'vue'
 import { useExcelData } from '@/composables/useExcelData.js'
+import { useRemoteOcorrencias } from '@/composables/useRemoteOcorrencias.js'
 
 export const useOcorrencias = () => {
   const { carregarDadosProcessados, temDadosPlanilha } = useExcelData()
+  const { isConfigured: remoteReady, list: rList, add: rAdd, update: rUpdate, remove: rRemove, setUrl: setRemoteUrl, getUrl: getRemoteUrl } = useRemoteOcorrencias()
   const saving = ref(false)
 
   const STORAGE_KEY = 'carometro_ocorrencias_store'
@@ -70,8 +72,18 @@ export const useOcorrencias = () => {
   }
 
   const list = (cursoId, turmaId, alunoId) => {
-    // ensureLoaded é async; chamadas de UI iniciam cedo. Não bloquear; iniciar carregamento em background.
     ensureLoaded()
+    if (remoteReady()) {
+      // retorno assíncrono: também manter local em paralelo
+      rList(cursoId, turmaId, alunoId).then(items => {
+        const arr = getPath(cursoId, turmaId, alunoId)
+        // mesclar: remoto vence pelo id
+        const map = new Map(arr.map(o => [o.id, o]))
+        items.forEach(o => map.set(o.id, o))
+        store.value.registros[cursoId][turmaId][alunoId] = Array.from(map.values())
+        persist()
+      }).catch(() => {})
+    }
     const arr = getPath(cursoId, turmaId, alunoId) || []
     if (arr.length === 0) importLegacyIfNeeded(cursoId, turmaId, alunoId)
     return [...(getPath(cursoId, turmaId, alunoId) || [])]
@@ -91,6 +103,14 @@ export const useOcorrencias = () => {
       const arr = getPath(cursoId, turmaId, alunoId)
       arr.unshift(nova)
       persist()
+      if (remoteReady()) {
+        rAdd(cursoId, turmaId, alunoId, nova).then(remoteItem => {
+          // atualizar com retorno do backend (caso altere algo)
+          const idx = arr.findIndex(o => o.id === nova.id)
+          if (idx >= 0) arr[idx] = { ...arr[idx], ...remoteItem }
+          persist()
+        }).catch(() => {/* mantém local se falhar */})
+      }
       return nova
     } finally {
       saving.value = false
@@ -106,6 +126,9 @@ export const useOcorrencias = () => {
       if (i === -1) throw new Error('Ocorrência não encontrada')
       arr[i] = { ...arr[i], ...patch }
       persist()
+      if (remoteReady()) {
+        rUpdate(cursoId, turmaId, alunoId, ocorrenciaId, patch).catch(() => {})
+      }
       return arr[i]
     } finally {
       saving.value = false
@@ -120,6 +143,9 @@ export const useOcorrencias = () => {
       const nova = arr.filter(o => o.id !== ocorrenciaId)
       store.value.registros[cursoId][turmaId][alunoId] = nova
       persist()
+      if (remoteReady()) {
+        rRemove(cursoId, turmaId, alunoId, ocorrenciaId).catch(() => {})
+      }
       return true
     } finally {
       saving.value = false
@@ -146,5 +172,8 @@ export const useOcorrencias = () => {
     persist()
   }
 
-  return { saving, list, add, update, remove, exportToFile, importFromObject }
+  const getRemote = () => getRemoteUrl()
+  const setRemote = (url) => setRemoteUrl(url)
+
+  return { saving, list, add, update, remove, exportToFile, importFromObject, getRemote, setRemote }
 }
