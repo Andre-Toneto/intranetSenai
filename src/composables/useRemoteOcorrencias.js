@@ -26,10 +26,7 @@ export const useRemoteOcorrencias = () => {
       const url = base.replace(/\/$/, '') + path
       const isPost = (options?.method || 'GET').toUpperCase() === 'POST'
       const headers = isPost ? { 'Content-Type': 'text/plain;charset=utf-8' } : {}
-      const controller = new AbortController()
-      const id = setTimeout(() => controller.abort(), 8000)
-      const res = await fetch(url, { headers, signal: controller.signal, ...options })
-      clearTimeout(id)
+      const res = await fetch(url, { headers, ...options })
       if (!res.ok) return { ok: false, status: res.status }
       return await res.json()
     } catch (e) {
