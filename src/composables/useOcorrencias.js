@@ -57,6 +57,8 @@ export const useOcorrencias = () => {
     const t = String(turmaId || '').trim()
     const a = String(alunoId || '').trim()
     if (!c || !t || !a) return null
+    if (!store.value || typeof store.value !== 'object') store.value = { version: 1, updatedAt: null, registros: {}, tombstones: {} }
+    if (!store.value.registros || typeof store.value.registros !== 'object') store.value.registros = {}
     if (!store.value.registros[c]) store.value.registros[c] = {}
     if (!store.value.registros[c][t]) store.value.registros[c][t] = {}
     if (!store.value.registros[c][t][a]) store.value.registros[c][t][a] = []
@@ -68,6 +70,8 @@ export const useOcorrencias = () => {
     const t = String(turmaId || '').trim()
     const a = String(alunoId || '').trim()
     if (!c || !t || !a) return null
+    if (!store.value || typeof store.value !== 'object') store.value = { version: 1, updatedAt: null, registros: {}, tombstones: {} }
+    if (!store.value.tombstones || typeof store.value.tombstones !== 'object') store.value.tombstones = {}
     if (!store.value.tombstones[c]) store.value.tombstones[c] = {}
     if (!store.value.tombstones[c][t]) store.value.tombstones[c][t] = {}
     if (!store.value.tombstones[c][t][a]) store.value.tombstones[c][t][a] = {}
