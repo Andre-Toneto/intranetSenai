@@ -287,25 +287,25 @@ export const useExcelData = () => {
   // Função para obter lista de cursos disponíveis
   const getCursosDisponiveis = () => {
     const dados = carregarDadosProcessados()
-    if (!dados) return []
-    
+    if (!dados || !dados.cursos) return []
+
     return Object.values(dados.cursos).map(curso => ({
       id: curso.id,
       nome: curso.nome,
       cor: curso.cor,
       totalAlunos: curso.totalAlunos,
-      totalTurmas: Object.keys(curso.turmas).length
+      totalTurmas: Object.keys(curso.turmas || {}).length
     }))
   }
 
   // Função para obter turmas de um curso
   const getTurmasPorCurso = (cursoId) => {
     const dados = carregarDadosProcessados()
-    if (!dados || !dados.cursos[cursoId]) {
+    if (!dados || !dados.cursos || !dados.cursos[cursoId]) {
       return []
     }
-    
-    return Object.values(dados.cursos[cursoId].turmas)
+
+    return Object.values(dados.cursos[cursoId].turmas || {})
   }
 
   // Função para verificar se há dados da planilha
