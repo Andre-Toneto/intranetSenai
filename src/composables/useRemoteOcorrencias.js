@@ -1,12 +1,14 @@
 export const useRemoteOcorrencias = () => {
   const STORAGE_URL_KEY = 'ocorrencias_webapp_url'
+  const DEFAULT_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwKS-_uEQlc5Y7TVwf_OLAR3kwHUrz_PincIyskUdTWnlRaaSh_CCwWgdFRm2LuJNrDDA/exec'
 
   const getUrl = () => {
     try {
       const v = localStorage.getItem(STORAGE_URL_KEY)
-      return typeof v === 'string' ? v.trim() : ''
+      const fromStorage = typeof v === 'string' ? v.trim() : ''
+      return fromStorage || DEFAULT_WEBAPP_URL
     } catch {
-      return ''
+      return DEFAULT_WEBAPP_URL
     }
   }
 
@@ -15,7 +17,7 @@ export const useRemoteOcorrencias = () => {
     localStorage.setItem(STORAGE_URL_KEY, url.trim())
   }
 
-  const isConfigured = () => !!getUrl()
+  const isConfigured = () => true
 
   const safeFetch = async (path = '', options = {}) => {
     const base = getUrl()
