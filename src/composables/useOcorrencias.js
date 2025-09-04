@@ -91,16 +91,20 @@ export const useOcorrencias = () => {
   }
 
   const refreshFromRemote = async (cursoId, turmaId, alunoId) => {
+    if (!cursoId || !turmaId || !alunoId) return list(cursoId, turmaId, alunoId)
     if (!remoteReady()) return list(cursoId, turmaId, alunoId)
     try {
       const items = await rList(cursoId, turmaId, alunoId)
-      const current = getPath(cursoId, turmaId, alunoId)
-      const tombs = getTombs(cursoId, turmaId, alunoId)
+      const current = getPath(cursoId, turmaId, alunoId) || []
+      const tombs = getTombs(cursoId, turmaId, alunoId) || {}
       const map = new Map(current.map(o => [o.id, o]))
       items.forEach(o => map.set(o.id, o))
       const merged = Array.from(map.values()).filter(o => !tombs[o.id])
-      store.value.registros[cursoId][turmaId][alunoId] = merged
-      persist()
+      const target = getPath(cursoId, turmaId, alunoId)
+      if (target) {
+        store.value.registros[cursoId][turmaId][alunoId] = merged
+        persist()
+      }
       return list(cursoId, turmaId, alunoId)
     } catch {
       return list(cursoId, turmaId, alunoId)
@@ -111,6 +115,9 @@ export const useOcorrencias = () => {
     saving.value = true
     try {
       await ensureLoaded()
+      const arr = getPath(cursoId, turmaId, alunoId)
+      const tombs = getTombs(cursoId, turmaId, alunoId)
+      if (!arr || !tombs) throw new Error('Curso, Turma e Aluno são obrigatórios')
       const nova = {
         id: genId(),
         tipo: (payload?.tipo || 'Outro'),
@@ -118,8 +125,6 @@ export const useOcorrencias = () => {
         data: payload?.data || new Date().toISOString(),
         autor: payload?.autor || 'Administrador'
       }
-      const arr = getPath(cursoId, turmaId, alunoId)
-      const tombs = getTombs(cursoId, turmaId, alunoId)
       delete tombs[nova.id]
       arr.unshift(nova)
       persist()
@@ -141,8 +146,9 @@ export const useOcorrencias = () => {
     try {
       await ensureLoaded()
       const arr = getPath(cursoId, turmaId, alunoId)
+      if (!arr) throw new Error('Curso, Turma e Aluno são obrigatórios')
       const i = arr.findIndex(o => o.id === ocorrenciaId)
-      if (i === -1) throw new Error('Ocorrência não encontrada')
+      if (i === -1) throw new Error('Ocorr��ncia não encontrada')
       arr[i] = { ...arr[i], ...patch }
       persist()
       if (remoteReady()) {
@@ -160,6 +166,7 @@ export const useOcorrencias = () => {
       await ensureLoaded()
       const arr = getPath(cursoId, turmaId, alunoId)
       const tombs = getTombs(cursoId, turmaId, alunoId)
+      if (!arr || !tombs) throw new Error('Curso, Turma e Aluno são obrigatórios')
       const nova = arr.filter(o => o.id !== ocorrenciaId)
       store.value.registros[cursoId][turmaId][alunoId] = nova
       tombs[ocorrenciaId] = true
